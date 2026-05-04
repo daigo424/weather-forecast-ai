@@ -1,0 +1,19 @@
+FROM apache/airflow:3.2.1
+
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
+
+USER airflow
+RUN pip install --no-cache-dir \
+    'mlflow==3.11.1' \
+    'scikit-learn>=1.8.0' \
+    'lightgbm>=4.0' \
+    'fastapi' \
+    'requests' \
+    'pandas' \
+    'numpy' \
+    'pyarrow' \
+    'psycopg2-binary' \
+    'alembic>=1.13'

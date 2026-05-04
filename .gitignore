@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+tmp/
+data/mlruns/
+data/mlflow.db
+*.egg-info
+
+.*/
+!.github/
+
+# Virtual environments
+\.venv
+
+# Environment variables
+.env
