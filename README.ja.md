@@ -44,7 +44,7 @@ fetch_data ──► PostgreSQL
 | サービス | ポート | 説明 |
 |---|---|---|
 | PostgreSQL | 5432 | 気象観測・予測データの保存 |
-| MLflow | 5000 | 実験管理・モデルレジストリ |
+| MLflow | 5000 | 実験管理・モデルレジストリ（ローカル Docker） |
 | Airflow | 8080 | 日次パイプラインのオーケストレーション |
 | FastAPI | 8000 | 予測 REST API |
 | Streamlit | 8501 | 7 日間予報ダッシュボード |
@@ -133,7 +133,8 @@ weather-forecast-ai/
 
 ```bash
 cp .env.example .env
-# 必要に応じて .env を編集（Docker 環境ではデフォルト値で動作します）
+# デフォルトはローカル Docker MLflow (http://mlflow:5000)
+# DagsHub を使う場合は .env の MLFLOW_TRACKING_URI を切り替えて認証情報を追記
 ```
 
 ### 2. 全サービスを起動
@@ -211,5 +212,7 @@ fetch_data → train_model → evaluate_model → register_model
 | 変数名 | デフォルト値 | 説明 |
 |---|---|---|
 | `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/app` | PostgreSQL 接続文字列 |
-| `MLFLOW_TRACKING_URI` | `sqlite:///data/mlflow.db` | MLflow トラッキングバックエンド |
+| `MLFLOW_TRACKING_URI` | `http://mlflow:5000` | MLflow バックエンド — ローカル Docker または DagsHub URL |
+| `MLFLOW_TRACKING_USERNAME` | — | DagsHub ユーザー名（DagsHub 使用時のみ） |
+| `MLFLOW_TRACKING_PASSWORD` | — | DagsHub アクセストークン（DagsHub 使用時のみ） |
 | `LGBM_N_JOBS` | `-1` | LightGBM スレッド数（Docker 内では `1` 推奨） |

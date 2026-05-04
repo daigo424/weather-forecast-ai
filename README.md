@@ -44,7 +44,7 @@ fetch_data ──► PostgreSQL
 | Service | Port | Description |
 |---|---|---|
 | PostgreSQL | 5432 | Weather observation & prediction store |
-| MLflow | 5000 | Experiment tracking + model registry |
+| MLflow | 5000 | Experiment tracking + model registry (local Docker) |
 | Airflow | 8080 | Daily pipeline orchestration |
 | FastAPI | 8000 | Prediction REST API |
 | Streamlit | 8501 | 7-day forecast dashboard |
@@ -133,7 +133,8 @@ Total: **663 features** per sample.
 
 ```bash
 cp .env.example .env
-# Edit .env if needed — default values work with Docker
+# Default: local Docker MLflow at http://mlflow:5000
+# To use DagsHub instead, swap the MLFLOW_TRACKING_URI in .env and add credentials
 ```
 
 ### 2. Start all services
@@ -211,5 +212,7 @@ fetch_data → train_model → evaluate_model → register_model
 | Variable | Default | Description |
 |---|---|---|
 | `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/app` | PostgreSQL connection string |
-| `MLFLOW_TRACKING_URI` | `sqlite:///data/mlflow.db` | MLflow tracking backend |
+| `MLFLOW_TRACKING_URI` | `http://mlflow:5000` | MLflow backend — local Docker or DagsHub URL |
+| `MLFLOW_TRACKING_USERNAME` | — | DagsHub username (DagsHub only) |
+| `MLFLOW_TRACKING_PASSWORD` | — | DagsHub access token (DagsHub only) |
 | `LGBM_N_JOBS` | `-1` | LightGBM thread count (set to `1` in Docker to avoid contention) |
