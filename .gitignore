@@ -17,3 +17,6 @@ data/mlflow.db
 
 # Environment variables
 .env
+
+# CI artifacts
+run_id.txt

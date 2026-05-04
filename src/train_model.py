@@ -92,6 +92,8 @@ def _fix_artifact_location() -> None:
     if not MLFLOW_TRACKING_URI.startswith("sqlite:///"):
         return
     db_path = Path(MLFLOW_TRACKING_URI[len("sqlite:///"):]).resolve()
+    if not db_path.parent.exists():
+        return
     correct_mlruns = str(db_path.parent / "mlruns")
 
     with sqlite3.connect(str(db_path)) as conn:
@@ -197,4 +199,5 @@ def run() -> str:
 
 
 if __name__ == "__main__":
-    run()
+    run_id = run()
+    Path("run_id.txt").write_text(run_id)

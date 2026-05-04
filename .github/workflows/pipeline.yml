@@ -1,0 +1,69 @@
+name: ML Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    name: fetch → train → evaluate → register
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+      MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+      MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+      LGBM_N_JOBS: "2"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: DB migrate
+        run: uv run alembic upgrade head
+
+      - name: Fetch weather data
+        run: uv run python -m src.fetch_data
+
+      - name: Train model
+        run: uv run python -m src.train_model 2>&1 | tee train.log
+
+      - name: Export run_id
+        id: train
+        run: echo "run_id=$(cat run_id.txt)" >> $GITHUB_OUTPUT
+
+      - name: Evaluate model
+        env:
+          RUN_ID: ${{ steps.train.outputs.run_id }}
+        run: |
+          uv run python - <<'EOF'
+          import os, sys, mlflow
+          from src.config import MLFLOW_TRACKING_URI
+          mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+          client = mlflow.tracking.MlflowClient()
+          run = client.get_run(os.environ["RUN_ID"])
+          reg_mae = run.data.metrics.get("reg_mae")
+          print(f"[evaluate] run_id={os.environ['RUN_ID']} reg_mae={reg_mae}")
+          if reg_mae is None or reg_mae > 10.0:
+              sys.exit(f"[evaluate] FAIL: reg_mae={reg_mae} > threshold 10.0")
+          print("[evaluate] PASS")
+          EOF
+
+      - name: Upload train log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-log-${{ github.sha }}
+          path: train.log
+
+      - name: Register model to DagsHub
+        run: uv run python -m src.save_model ${{ steps.train.outputs.run_id }}
