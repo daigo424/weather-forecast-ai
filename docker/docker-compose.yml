@@ -41,12 +41,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mlflow:
+        condition: service_started
     environment:
       - _AIRFLOW_WWW_USER_USERNAME=admin
       - _AIRFLOW_WWW_USER_PASSWORD=admin
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - MLFLOW_TRACKING_URI=${MLFLOW_REMOTE_TRACKING_URI:-sqlite:////opt/airflow/project/data/mlflow.db}
+      - MLFLOW_TRACKING_URI=${MLFLOW_REMOTE_TRACKING_URI:-sqlite:////app/data/mlflow.db}
       - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME:-}
       - MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD:-}
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/app
@@ -55,6 +57,7 @@ services:
     volumes:
       - ../dags:/opt/airflow/dags
       - ..:/opt/airflow/project
+      - ../data:/app/data
     ports:
       - "8080:8080"
     command: airflow standalone
@@ -67,6 +70,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mlflow:
+        condition: service_started
     environment:
       - MLFLOW_TRACKING_URI=${MLFLOW_REMOTE_TRACKING_URI:-sqlite:////app/data/mlflow.db}
       - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME:-}
@@ -74,8 +79,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/app
       - GIT_PYTHON_REFRESH=quiet
     volumes:
-      - ../data/mlflow.db:/app/data/mlflow.db
-      - ../data/mlruns:/app/data/mlruns
+      - ../data:/app/data
     ports:
       - "8000:8000"
 
