@@ -38,12 +38,18 @@ airflow-up:
 	$(COMPOSE) up -d airflow
 
 # ローカル実行
-db-init:
-	uv run alembic upgrade head
+db-init: db-migrate
 	uv run python -c "from src.fetch_data import run; from datetime import date; run(start=date(2021, 1, 1))"
+	uv run python -m src.fetch_forecast
+
+db-migrate:
+	uv run alembic upgrade head
 
 fetch:
-	uv run python -m src.fetch_data
+	uv run python -c "from src.fetch_data import sync; sync()"
+
+fetch-nwp:
+	uv run python -m src.fetch_forecast
 
 train:
 	uv run python -m src.train_model

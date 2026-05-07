@@ -18,12 +18,13 @@ default_args = {
 
 
 def _fetch_data(**context) -> None:
-    from datetime import date, timedelta
-    from src.fetch_data import run as fetch_run
+    from src.fetch_data import sync
+    sync(days=14)
 
-    end   = date.today() - timedelta(days=5)
-    start = end - timedelta(days=365)
-    fetch_run(start=start, end=end)
+
+def _fetch_nwp_forecast(**context) -> None:
+    from src.fetch_forecast import run_historical
+    run_historical()
 
 
 def _train_model(**context) -> None:
@@ -80,6 +81,11 @@ with DAG(
         python_callable=_fetch_data,
     )
 
+    fetch_nwp_forecast = PythonOperator(
+        task_id="fetch_nwp_forecast",
+        python_callable=_fetch_nwp_forecast,
+    )
+
     train_model = PythonOperator(
         task_id="train_model",
         python_callable=_train_model,
@@ -95,4 +101,4 @@ with DAG(
         python_callable=_register_model,
     )
 
-    fetch_data >> train_model >> evaluate_model >> register_model
+    fetch_data >> fetch_nwp_forecast >> train_model >> evaluate_model >> register_model
