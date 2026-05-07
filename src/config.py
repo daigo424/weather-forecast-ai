@@ -11,7 +11,9 @@ MLFLOW_EXPERIMENT_NAME = "weather-forecast"
 REG_MODEL_NAME = "weather_regression"
 CLS_MODEL_NAME = "weather_classifier"
 
-OPEN_METEO_API_URL = "https://archive-api.open-meteo.com/v1/archive"
+OPEN_METEO_API_URL      = "https://archive-api.open-meteo.com/v1/archive"
+NWP_FORECAST_API_URL    = "https://api.open-meteo.com/v1/forecast"
+NWP_HISTORICAL_API_URL  = "https://historical-forecast-api.open-meteo.com/v1/forecast"
 
 LOCATIONS = [
     {"name": "tokyo_center", "lat": 35.6812, "lon": 139.7671},

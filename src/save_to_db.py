@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from src.config import LOCATIONS
-from src.models import WeatherHourly, WeatherImportLog, WeatherPrediction
+from src.models import WeatherHourly, WeatherImportLog, WeatherNwpForecast, WeatherPrediction
 
 
 def is_date_range_imported(session: Session, start: date, end: date) -> bool:
@@ -42,6 +42,20 @@ def save_raw_weather(session: Session, df: pd.DataFrame) -> None:
         .values(records)
         .on_conflict_do_nothing(index_elements=["datetime", "location_name"])
     )
+
+
+def save_nwp_forecast(session: Session, df: pd.DataFrame) -> None:
+    df = df.copy()
+    df["datetime"] = pd.to_datetime(df["datetime"])
+    nwp_cols = [c.key for c in WeatherNwpForecast.__table__.columns]
+    df = df[[c for c in nwp_cols if c in df.columns]]
+    records = df.to_dict(orient="records")
+    if records:
+        session.execute(
+            pg_insert(WeatherNwpForecast)
+            .values(records)
+            .on_conflict_do_nothing(index_elements=["datetime", "location_name"])
+        )
 
 
 def save_predictions(session: Session, df: pd.DataFrame) -> None:

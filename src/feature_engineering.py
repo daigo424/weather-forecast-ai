@@ -76,6 +76,50 @@ def add_wind_direction_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_nwp_features(df: pd.DataFrame, nwp_wide_df: pd.DataFrame) -> pd.DataFrame:
+    """実績 wide_df に NWP予報特徴量を追加する。
+
+    追加する列:
+      nwp_{var}_{loc}       : 同時刻のNWP値（バイアス基準）
+      nwp_bias_{var}_{loc}  : actual_T - nwp_T（地域バイアス）
+      nwp_next_{var}_{loc}  : T+1 時点のNWP値（予測ターゲット時点の予報）
+    wind_direction の nwp_next は sin/cos に変換して raw を削除。
+    """
+    df = df.copy()
+    nwp_value_cols = [c for c in nwp_wide_df.columns if c != "datetime"]
+
+    # NWP at time T（バイアス計算用）
+    nwp_same = nwp_wide_df.rename(columns={c: f"nwp_{c}" for c in nwp_value_cols})
+    df = df.merge(nwp_same, on="datetime", how="left")
+
+    # Bias = actual - nwp（wind_direction は循環値のためスキップ）
+    for col in nwp_value_cols:
+        if "wind_direction" not in col and col in df.columns:
+            df[f"nwp_bias_{col}"] = df[col] - df[f"nwp_{col}"]
+
+    # wind_direction の raw NWP 列は不要なので削除
+    df = df.drop(columns=[c for c in df.columns if c.startswith("nwp_wind_direction")])
+
+    # NWP at T+1（shift で1時間ずらして結合）
+    nwp_next = nwp_wide_df.copy()
+    nwp_next["datetime"] = nwp_next["datetime"] - pd.Timedelta(hours=1)
+    nwp_next = nwp_next.rename(columns={c: f"nwp_next_{c}" for c in nwp_value_cols})
+    df = df.merge(nwp_next, on="datetime", how="left")
+
+    # nwp_next_wind_direction を sin/cos に変換して raw を削除
+    nwp_next_wd_cols = [
+        c for c in df.columns
+        if c.startswith("nwp_next_wind_direction") and not c.endswith(("_sin", "_cos"))
+    ]
+    for col in nwp_next_wd_cols:
+        rad = 2 * np.pi * df[col] / 360
+        df[f"{col}_sin"] = np.sin(rad)
+        df[f"{col}_cos"] = np.cos(rad)
+    df = df.drop(columns=nwp_next_wd_cols)
+
+    return df
+
+
 def add_lag_features(df: pd.DataFrame, base_cols: list[str] | None = None) -> pd.DataFrame:
     """ラグ・差分・移動平均特徴量を追加。
 
@@ -104,20 +148,27 @@ def add_lag_features(df: pd.DataFrame, base_cols: list[str] | None = None) -> pd
     return df
 
 
-def make_features(wide_df: pd.DataFrame) -> pd.DataFrame:
+def make_features(
+    wide_df: pd.DataFrame,
+    nwp_wide_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     """学習・推論共通の特徴量生成パイプライン。
 
-    wind_direction_* は sin/cos に変換してからラグを計算する。
-    raw 列はラグ対象から除外するが出力には残す（回帰ターゲット生成のため）。
+    nwp_wide_df が渡された場合は NWP 特徴量（同時刻値・バイアス・T+1予報）を追加する。
+    NWP 列はラグ対象に含めない（点予測値のため）。
     """
     raw_cols = [c for c in wide_df.columns if c != "datetime"]
     df = add_time_features(wide_df)
     df = add_spatial_features(df)
     df = add_wind_direction_features(df)
 
+    if nwp_wide_df is not None:
+        df = add_nwp_features(df, nwp_wide_df)
+
     wind_cols = [c for c in raw_cols if c.startswith("wind_direction_")]
     wind_encoded_cols = [f"{c}_sin" for c in wind_cols] + [f"{c}_cos" for c in wind_cols]
     lag_cols = [c for c in raw_cols if c not in wind_cols] + wind_encoded_cols
+    # NWP 列はラグ対象に含めない
 
     df = add_lag_features(df, base_cols=lag_cols)
     return df
@@ -145,6 +196,10 @@ def make_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
     weather_col = f"weather_code_{CENTER_LOCATION}"
     if weather_col in df.columns:
         cls_cols[f"next_{weather_col}"] = df[weather_col].shift(-1)
+
+    precip_col = f"precipitation_{CENTER_LOCATION}"
+    if precip_col in df.columns:
+        cls_cols[f"precip_binary_{CENTER_LOCATION}"] = (df[precip_col].shift(-1) > 0.1).astype(int)
 
     y_reg = pd.DataFrame(reg_cols)
     y_cls = pd.DataFrame(cls_cols)
