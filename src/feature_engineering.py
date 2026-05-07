@@ -148,6 +148,8 @@ def make_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
     y_cls = pd.DataFrame(cls_cols)
 
     X = df.drop(columns=["datetime"])
+    wind_raw_cols = [c for c in X.columns if "wind_direction" in c and not c.endswith(("_sin", "_cos"))]
+    X = X.drop(columns=wind_raw_cols)
     dataset = pd.concat([X, y_reg, y_cls], axis=1).dropna()
 
     X     = dataset[X.columns]
