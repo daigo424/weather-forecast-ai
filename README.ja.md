@@ -1,49 +1,53 @@
 # 天気予報 AI — MLOps パイプライン
 
-東京の気象データを自動取得し、LightGBM による予測モデルを学習・提供する End-to-End MLOps パイプラインです。REST API と Streamlit ダッシュボードから 7 日間の予報を参照できます。
+東京の気象データを自動取得し、NWP 予報とバイアス補正を活用した LightGBM 予測モデルを学習・提供する End-to-End MLOps パイプラインです。REST API と Streamlit ダッシュボードから 7 日間の予報（降水確率・気温・天気）を参照できます。
 
 ## 概要
 
-東京都内 5 地点の今後 168 時間（7 日間）の気象を 1 時間ごとに予測します。データ取得 → モデル学習 → 評価 → モデル登録まで、Airflow による日次パイプラインが自動的に行います。
+東京都内 5 地点の今後 168 時間（7 日間）の気象を 1 時間ごとに予測します。データ取得 → NWP 予報取得 → モデル学習 → 評価 → モデル登録まで、Airflow による日次パイプラインが自動的に行います。
 
-**予測対象（1 時間後, tokyo\_center）:**
+**予測対象（tokyo\_center）:**
 
 | 種別 | 対象変数 |
 |---|---|
 | 回帰 | 気温・湿度・露点温度・海面気圧・地表気圧・雲量（低/中/高/全天）・降水量・雨量・風速・風向・最大瞬間風速 |
-| 分類 | WMO 天気コード（5 クラス：晴天 / 曇天 / 雨 / 雪・氷 / 雷雨） |
+| 分類 | WMO 天気コード（5 クラス：晴天 / 曇天 / 雨 / 雪・氷 / 雷雨）、降水有無（二値） |
+
+フロントエンドでは回帰モデルの気温・天気コードと、降水有無分類器の `predict_proba` から得た**降水確率（10% 区切り）**を表示します。
 
 ## アーキテクチャ
 
 ```
-Open-Meteo API
-      │
-      ▼
-fetch_data ──► PostgreSQL
-                  │
-                  ▼
-            train_model  (LightGBM MultiOutput)
-                  │
-                  ▼
-           MLflow Tracking
-                  │
-            evaluate_model  (MAE 閾値チェック)
-                  │
-            register_model  (MLflow Model Registry)
-                  │
-          ┌───────┴───────┐
-          ▼               ▼
-       FastAPI        Streamlit
-    /forecast          ダッシュボード
-    /today
-    /predict
+Open-Meteo Archive API          Open-Meteo Historical Forecast API
+ (ERA5 実績、初回のみ)               (過去 NWP 予報、日次)
+        │                                    │
+        ▼                                    ▼
+  weather_hourly  ◄──── forecast API ──►  weather_nwp_forecast
+  (実績データ)       (past_days 日次同期)     (NWP 予報データ)
+        │                                    │
+        └──────────────┬─────────────────────┘
+                       ▼
+                 train_model  (LightGBM MultiOutput + NWP バイアス補正)
+                       │
+                 MLflow Tracking
+                       │
+                 evaluate_model  (MAE 閾値チェック)
+                       │
+                 register_model  (MLflow Model Registry)
+                       │
+               ┌───────┴───────┐
+               ▼               ▼
+            FastAPI        Streamlit
+         /forecast          ダッシュボード
+         /model-info
+         /today
 ```
 
 ### サービス一覧
 
 | サービス | ポート | 説明 |
 |---|---|---|
-| PostgreSQL | 5432 | 気象観測・予測データの保存 |
+| PostgreSQL | 5432 | 気象観測・NWP 予報・予測データの保存 |
 | MLflow | 5000 | 実験管理・モデルレジストリ（ローカル Docker） |
 | Airflow | 8080 | 日次パイプラインのオーケストレーション |
 | FastAPI | 8000 | 予測 REST API |
@@ -71,17 +75,18 @@ weather-forecast-ai/
 │   ├── config.py                # 設定値（環境変数対応）
 │   ├── models.py                # SQLAlchemy ORM モデル
 │   ├── db.py                    # DB エンジン・セッション
-│   ├── fetch_data.py            # Open-Meteo Archive API からのデータ取得
+│   ├── fetch_data.py            # 実績データ取得（ERA5 初回 / forecast API 日次）
+│   ├── fetch_forecast.py        # NWP 予報データ取得（historical / inference）
 │   ├── fetch_today.py           # 本日の実況天気取得（DB → API フォールバック）
-│   ├── feature_engineering.py   # ラグ・差分・移動平均特徴量生成
+│   ├── feature_engineering.py   # ラグ・差分・移動平均・NWP 特徴量生成
 │   ├── train_model.py           # LightGBM 学習 + MLflow 記録
 │   ├── evaluate_model.py        # MAE / RMSE / F1 評価
-│   ├── predict.py               # 168 ステップ再帰予測
+│   ├── predict.py               # 非再帰 168 ステップ直接予測
 │   ├── load_model.py            # レジストリから最新モデルをロード
 │   ├── save_model.py            # Run をモデルレジストリに登録
 │   └── streamlit_app.py         # ダッシュボード
 ├── dags/
-│   └── weather_pipeline_dag.py  # Airflow DAG（fetch → train → eval → register）
+│   └── weather_pipeline_dag.py  # Airflow DAG
 ├── alembic/                     # DB マイグレーション
 ├── docker/
 │   ├── docker-compose.yml
@@ -98,12 +103,12 @@ weather-forecast-ai/
 
 `notebooks/` は、本番パイプラインで使う特徴量・モデルを決定するための実験の軌跡です。
 
-| Notebook | 内容                              |
-|---|---------------------------------|
-| `01_eda.ipynb` | 東京気象データの探索的データ分析                |
-| `02_feature_engineering.ipynb` | ラグ・差分・空間特徴量の有効性検証               |
-| `03_baseline_model.ipynb` | 線形回帰・決定木によるベースライン構築             |
-| `04_model_improvement.ipynb` | LightGBM のハイパーパラメータチューニング       |
+| Notebook | 内容 |
+|---|---|
+| `01_eda.ipynb` | 東京気象データの探索的データ分析 |
+| `02_feature_engineering.ipynb` | ラグ・差分・空間特徴量の有効性検証 |
+| `03_baseline_model.ipynb` | 線形回帰・決定木によるベースライン構築 |
+| `04_model_improvement.ipynb` | LightGBM のハイパーパラメータチューニング |
 | `05_model_comparison.ipynb` | LightGBM vs XGBoost vs その他の最終比較 |
 
 元データ（気象庁 CSV、2021–2025 年）は `notebooks/data/original/` に格納しています。
@@ -115,11 +120,15 @@ weather-forecast-ai/
 - **生の気象値:** 15 種類の時間別観測値
 - **時間特徴量:** 時刻・年間通し日・月（sin/cos エンコーディング）
 - **空間特徴量:** 各地点と tokyo\_center との差分
+- **風向特徴量:** wind\_direction を sin/cos 成分に変換（循環値として扱う）
+- **NWP 特徴量:** 同時刻の NWP 値・バイアス（実績−NWP）・T+1 時点の NWP 予報値
 - **ラグ特徴量:** t−1、t−6、t−24 時間
 - **差分特徴量:** t−(t−1)、t−(t−3)
 - **移動平均:** 6 時間・24 時間ウィンドウ
 
-合計: **1 サンプルあたり 663 特徴量**
+### NWP バイアス補正の仕組み
+
+学習時に「NWP 予報値と実績のズレ（地域バイアス）」を特徴量として学習します。推論時は現在時刻の特徴量を 1 回だけ計算し、各ステップ k=1〜168 で将来の NWP 予報値を `nwp_next_*` 列に上書きして直接予測します（再帰しないため誤差が累積しません）。
 
 ## クイックスタート
 
@@ -152,33 +161,27 @@ make up
 
 ### 3. DB の初期化とデータ取得
 
-初回のみ実行します（2021 年以降のデータを取得、30〜60 分程度）：
+初回のみ実行します（ERA5 実績 + NWP 予報バックフィル、30〜60 分程度）：
 
 ```bash
-make db-init
+make db-migrate   # weather_nwp_forecast テーブル等を作成
+make db-init      # ERA5 実績（2021年〜）+ NWP 予報（直近1年）を取得
 ```
 
-### 4. 初回モデル学習
+### 4. Airflow 日次パイプラインの有効化
 
-```bash
-make train
-```
-
-学習済みモデルは MLflow に登録され、API・ダッシュボードから即時利用できます。
-
-### 5. Airflow 日次パイプラインの有効化
-
-Airflow UI で `weather_forecast_pipeline` DAG を有効化します。以降は毎日自動でデータ更新・再学習・モデル登録が実行されます。
+Airflow UI で `weather_forecast_pipeline` DAG を有効化します。初回トリガーで学習・モデル登録まで自動実行されます。以降は毎日自動でデータ更新・再学習・モデル登録が行われます。
 
 ## Airflow パイプライン
 
 ```
-fetch_data → train_model → evaluate_model → register_model
+fetch_data → fetch_nwp_forecast → train_model → evaluate_model → register_model
 ```
 
 | タスク | 説明 |
 |---|---|
-| `fetch_data` | 過去 365 日分を Open-Meteo Archive API から取得（取得済み範囲はスキップ） |
+| `fetch_data` | forecast API の `past_days` で直近 14 日分の実績データを遅延なく同期 |
+| `fetch_nwp_forecast` | historical-forecast-api から直近 1 年分の NWP 予報をバックフィル |
 | `train_model` | LightGBM モデルを学習し、メトリクス・アーティファクトを MLflow に記録 |
 | `evaluate_model` | `reg_mae > 10.0` の場合は登録をブロック |
 | `register_model` | 検証済み Run を MLflow Model Registry に登録 |
@@ -189,8 +192,10 @@ fetch_data → train_model → evaluate_model → register_model
 |---|---|
 | `make build` | Docker イメージをビルド |
 | `make up` / `make down` | 全サービスの起動 / 停止 |
-| `make db-init` | DB スキーマ作成 + 2021 年以降のデータ取得（初回のみ） |
-| `make fetch` | 最新 365 日分のデータ取得 |
+| `make db-migrate` | DB マイグレーションのみ実行（テーブル作成） |
+| `make db-init` | マイグレーション + ERA5 バックフィル（2021年〜）+ NWP バックフィル |
+| `make fetch` | forecast API で直近 14 日分の実績データを同期（ERA5 ラグなし） |
+| `make fetch-nwp` | historical-forecast-api で直近 1 年分の NWP 予報を同期 |
 | `make train` | ローカルでモデル学習 |
 | `make predict` | ローカルで予測実行 |
 | `make test` | pytest 実行 |
@@ -203,7 +208,8 @@ fetch_data → train_model → evaluate_model → register_model
 | エンドポイント | メソッド | 説明 |
 |---|---|---|
 | `GET /health` | — | ヘルスチェック |
-| `GET /forecast?hours=168` | — | 時間別予測データ（全列） |
+| `GET /forecast?hours=168` | — | 時間別予測データ（全列、降水確率含む） |
+| `GET /model-info` | — | 使用中モデルのバージョン・Run Name 等 |
 | `GET /today` | — | 本日の実況天気 |
 | `POST /predict` | `{"hours": 168, "location": "tokyo_center"}` | 特定地点の予測 |
 
