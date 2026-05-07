@@ -25,14 +25,16 @@ def to_wide_format(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["hour"]        = df["datetime"].dt.hour
-    df["day_of_year"] = df["datetime"].dt.dayofyear
-    df["month"]       = df["datetime"].dt.month
+    hour        = df["datetime"].dt.hour
+    day_of_year = df["datetime"].dt.dayofyear
+    month       = df["datetime"].dt.month
 
-    df["hour_sin"]        = np.sin(2 * np.pi * df["hour"] / 24)
-    df["hour_cos"]        = np.cos(2 * np.pi * df["hour"] / 24)
-    df["day_of_year_sin"] = np.sin(2 * np.pi * df["day_of_year"] / 365)
-    df["day_of_year_cos"] = np.cos(2 * np.pi * df["day_of_year"] / 365)
+    df["hour_sin"]        = np.sin(2 * np.pi * hour / 24)
+    df["hour_cos"]        = np.cos(2 * np.pi * hour / 24)
+    df["day_of_year_sin"] = np.sin(2 * np.pi * day_of_year / 365)
+    df["day_of_year_cos"] = np.cos(2 * np.pi * day_of_year / 365)
+    df["month_sin"]       = np.sin(2 * np.pi * month / 12)
+    df["month_cos"]       = np.cos(2 * np.pi * month / 12)
 
     return df
 
