@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import requests
@@ -49,16 +49,16 @@ def fetch_current_weather(location: dict) -> dict | None:
 
 def get_today_weather(location_name: str = "tokyo_center") -> dict | None:
     """DBに当日データがあればそれを、なければ forecast API から取得。"""
-    today = date.today().isoformat()
+    now = datetime.now().isoformat()
     with engine.connect() as conn:
         df = pd.read_sql_query(
             text(
                 "SELECT * FROM weather_hourly"
-                " WHERE location_name = :name AND datetime >= :today"
+                " WHERE location_name = :name AND datetime <= :now"
                 " ORDER BY datetime DESC LIMIT 1"
             ),
             conn,
-            params={"name": location_name, "today": today},
+            params={"name": location_name, "now": now},
         )
 
     if not df.empty:
