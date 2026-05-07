@@ -35,6 +35,16 @@ def forecast(hours: int = 168) -> dict:
     return {"predictions": df.to_dict(orient="records")}
 
 
+@app.get("/model-info")
+def model_info() -> dict:
+    """現在使用中のモデルのバージョン・Run Name などを返す。"""
+    try:
+        from src.load_model import get_model_info
+        return get_model_info()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/today")
 def today_weather() -> dict:
     """本日の実況天気を返す（DB → forecast API フォールバック）。"""
