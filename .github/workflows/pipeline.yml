@@ -23,7 +23,7 @@ jobs:
       AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/dags
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:///airflow-meta.db
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:///${{ github.workspace }}/airflow-meta.db
 
     steps:
       - uses: actions/checkout@v4
