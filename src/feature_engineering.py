@@ -60,6 +60,20 @@ def add_spatial_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_wind_direction_features(df: pd.DataFrame) -> pd.DataFrame:
+    """wind_direction_* 列を sin/cos 成分に変換して追加する。
+
+    raw 列は make_dataset() の回帰ターゲット生成に必要なため保持する。
+    """
+    df = df.copy()
+    wind_cols = [c for c in df.columns if c.startswith("wind_direction_")]
+    for col in wind_cols:
+        radians = 2 * np.pi * df[col] / 360
+        df[f"{col}_sin"] = np.sin(radians)
+        df[f"{col}_cos"] = np.cos(radians)
+    return df
+
+
 def add_lag_features(df: pd.DataFrame, base_cols: list[str] | None = None) -> pd.DataFrame:
     """ラグ・差分・移動平均特徴量を追加。
 
@@ -91,12 +105,19 @@ def add_lag_features(df: pd.DataFrame, base_cols: list[str] | None = None) -> pd
 def make_features(wide_df: pd.DataFrame) -> pd.DataFrame:
     """学習・推論共通の特徴量生成パイプライン。
 
-    ラグは生の気象値列のみに適用する（時間・空間差分特徴量にはかけない）。
+    wind_direction_* は sin/cos に変換してからラグを計算する。
+    raw 列はラグ対象から除外するが出力には残す（回帰ターゲット生成のため）。
     """
     raw_cols = [c for c in wide_df.columns if c != "datetime"]
     df = add_time_features(wide_df)
     df = add_spatial_features(df)
-    df = add_lag_features(df, base_cols=raw_cols)
+    df = add_wind_direction_features(df)
+
+    wind_cols = [c for c in raw_cols if c.startswith("wind_direction_")]
+    wind_encoded_cols = [f"{c}_sin" for c in wind_cols] + [f"{c}_cos" for c in wind_cols]
+    lag_cols = [c for c in raw_cols if c not in wind_cols] + wind_encoded_cols
+
+    df = add_lag_features(df, base_cols=lag_cols)
     return df
 
 
@@ -127,6 +148,8 @@ def make_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataF
     y_cls = pd.DataFrame(cls_cols)
 
     X = df.drop(columns=["datetime"])
+    wind_raw_cols = [c for c in X.columns if "wind_direction" in c and not c.endswith(("_sin", "_cos"))]
+    X = X.drop(columns=wind_raw_cols)
     dataset = pd.concat([X, y_reg, y_cls], axis=1).dropna()
 
     X     = dataset[X.columns]
