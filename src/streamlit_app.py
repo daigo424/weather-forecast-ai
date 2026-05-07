@@ -57,6 +57,16 @@ def load_predictions() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=3600)
+def load_model_info() -> dict | None:
+    try:
+        resp = requests.get(f"{API_URL}/model-info", timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=600)
 def load_today_weather() -> dict | None:
     try:
@@ -321,3 +331,14 @@ render_daily_cards(daily, df)
 st.markdown("<br>", unsafe_allow_html=True)
 render_temperature_chart(df)
 render_precipitation_chart(df)
+
+info = load_model_info()
+if info:
+    reg = info.get("regression", {})
+    cls = info.get("classifier", {})
+    st.markdown("---")
+    st.caption(
+        f"🤖 モデル情報　"
+        f"回帰: **{reg.get('model_name')}** v{reg.get('version')} ({reg.get('run_name')}, 学習日時: {reg.get('trained_at', '-')})　／　"
+        f"分類: **{cls.get('model_name')}** v{cls.get('version')} ({cls.get('run_name')}, 学習日時: {cls.get('trained_at', '-')})"
+    )
