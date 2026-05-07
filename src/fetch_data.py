@@ -8,7 +8,7 @@ from typing import Any
 import pandas as pd
 import requests
 
-from src.config import HOURLY_COLUMNS, LOCATIONS, OPEN_METEO_API_URL
+from src.config import HOURLY_COLUMNS, LOCATIONS, NWP_FORECAST_API_URL, OPEN_METEO_API_URL
 from src.db import SessionLocal
 
 
@@ -91,5 +91,44 @@ def run(start: date | None = None, end: date | None = None) -> None:
     print("[fetch_data] done")
 
 
+def sync(days: int = 14) -> None:
+    """forecast API の past_days を使い、遅延なく直近 days 日分を weather_hourly に保存。
+    ERA5 の ~5 日ラグを回避するための日次同期用。
+    """
+    from src.save_to_db import save_raw_weather
+
+    params = {
+        "latitude":     ",".join(str(loc["lat"]) for loc in LOCATIONS),
+        "longitude":    ",".join(str(loc["lon"]) for loc in LOCATIONS),
+        "past_days":    days,
+        "forecast_days": 0,
+        "hourly":       ",".join(HOURLY_COLUMNS),
+        "timezone":     "Asia/Tokyo",
+    }
+
+    max_retries = 5
+    for attempt in range(max_retries):
+        resp = requests.get(NWP_FORECAST_API_URL, params=params, timeout=60)
+        if resp.status_code == 429:
+            wait = int(resp.headers.get("Retry-After", min(60, 2 ** attempt))) + random.uniform(0, 1)
+            print(f"429 rate-limited — waiting {wait:.1f}s (attempt {attempt + 1})")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        data = resp.json()
+        api_response = data if isinstance(data, list) else [data]
+        break
+    else:
+        raise RuntimeError(f"Open-Meteo forecast API failed after {max_retries} retries")
+
+    df = _to_dataframe(api_response)
+
+    with SessionLocal() as session:
+        save_raw_weather(session, df)
+        session.commit()
+
+    print(f"[fetch_data] sync done (past {days} days, no ERA5 lag)")
+
+
 if __name__ == "__main__":
-    run()
+    sync()

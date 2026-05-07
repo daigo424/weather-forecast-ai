@@ -35,6 +35,28 @@ class WeatherHourly(Base):
     wind_gusts_10m       = Column(Float)
 
 
+class WeatherNwpForecast(Base):
+    __tablename__ = "weather_nwp_forecast"
+
+    datetime             = Column(DateTime(timezone=True), primary_key=True)
+    location_name        = Column(Text, primary_key=True)
+    temperature_2m       = Column(Float)
+    relative_humidity_2m = Column(Float)
+    dew_point_2m         = Column(Float)
+    pressure_msl         = Column(Float)
+    surface_pressure     = Column(Float)
+    cloud_cover          = Column(Float)
+    cloud_cover_low      = Column(Float)
+    cloud_cover_mid      = Column(Float)
+    cloud_cover_high     = Column(Float)
+    precipitation        = Column(Float)
+    rain                 = Column(Float)
+    weather_code         = Column(Integer)
+    wind_speed_10m       = Column(Float)
+    wind_direction_10m   = Column(Float)
+    wind_gusts_10m       = Column(Float)
+
+
 class WeatherImportLog(Base):
     __tablename__ = "weather_import_log"
 

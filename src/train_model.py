@@ -132,7 +132,21 @@ def run() -> str:
 
     raw_df  = _load_weather_data()
     wide_df = to_wide_format(raw_df)
-    feat_df = make_features(wide_df)
+
+    # NWP予報データ（存在すれば特徴量に追加）
+    nwp_wide = None
+    try:
+        nwp_df = pd.read_sql_query(
+            "SELECT * FROM weather_nwp_forecast ORDER BY datetime, location_name", engine
+        )
+        if not nwp_df.empty:
+            nwp_df["datetime"] = pd.to_datetime(nwp_df["datetime"], utc=True).dt.tz_localize(None)
+            nwp_wide = to_wide_format(nwp_df)
+    except Exception as e:
+        print(f"[train] NWP data not available: {e}")
+
+    feat_df = make_features(wide_df, nwp_wide)
+    feat_df["lead_time"] = 1  # 学習は全て1ステップ先予測
 
     X, y_reg, y_cls, locations = make_dataset(feat_df)
     X_train, X_test, y_reg_train, y_reg_test, y_cls_train, y_cls_test = split_by_time(X, y_reg, y_cls)

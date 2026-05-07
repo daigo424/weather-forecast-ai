@@ -16,9 +16,9 @@ API_URL = os.getenv("API_URL", "http://localhost:8000")
 # Open-Meteo が返す WMO 天気コード → 表示クラス
 WEATHER_CODE_TO_CLASS: dict[int, int] = {
     # 快晴・ほぼ快晴
-    0: 1, 1: 1,
+    0: 1, 1: 1, 2: 1,
     # 一部曇り・曇り・霧
-    2: 2, 3: 2, 45: 2, 48: 2,
+    3: 2, 45: 2, 48: 2,
     # 霧雨
     51: 3, 53: 3, 55: 3,
     # 雨
@@ -79,13 +79,13 @@ def load_today_weather() -> dict | None:
 
 def extract_tokyo(df: pd.DataFrame) -> pd.DataFrame:
     col_map = {
-        "datetime":                        "datetime",
-        "step_hour":                       "step_hour",
-        "temperature_2m_tokyo_center":     "temperature",
-        "precipitation_tokyo_center":      "precipitation",
-        "weather_code_tokyo_center":       "weather_code",
+        "datetime":                                  "datetime",
+        "step_hour":                                 "step_hour",
+        "temperature_2m_tokyo_center":               "temperature",
+        "precipitation_probability_tokyo_center":    "precipitation_probability",
+        "weather_code_tokyo_center":                 "weather_code",
     }
-    missing = [k for k in col_map if k not in df.columns and k != "datetime"]
+    missing = [k for k in col_map if k not in df.columns and k not in ("datetime", "step_hour")]
     if missing:
         st.error(f"予測データに必要な列がありません: {missing}")
         st.stop()
@@ -105,10 +105,10 @@ def make_daily(df: pd.DataFrame) -> pd.DataFrame:
     return (
         df.groupby("date")
         .agg(
-            max_temp     =("temperature",  "max"),
-            min_temp     =("temperature",  "min"),
-            total_precip =("precipitation", "sum"),
-            weather_class=("weather_code",  worst_class),
+            max_temp      =("temperature",            "max"),
+            min_temp      =("temperature",            "min"),
+            max_precip_prob=("precipitation_probability", "max"),
+            weather_class =("weather_code",           worst_class),
         )
         .reset_index()
     )
@@ -141,9 +141,10 @@ def _weather_transition(day_df: pd.DataFrame) -> str:
 # UI コンポーネント
 # ---------------------------------------------------------------------------
 
-def _card_html(date_obj, max_temp: float, min_temp: float, total_precip: float, transition: str) -> str:
+def _card_html(date_obj, max_temp: float, min_temp: float, max_precip_prob: float, transition: str) -> str:
     dow = DOW_JA[date_obj.weekday()]
     date_color = "#e05c3a" if date_obj.weekday() == 6 else ("#3a7ae0" if date_obj.weekday() == 5 else "#333")
+    prob_pct = int(round(max_precip_prob * 100 / 10) * 10)  # 10%区切り
 
     return f"""
     <div style="text-align:center; padding:10px 6px; border:1px solid #e8e8e8;
@@ -154,7 +155,7 @@ def _card_html(date_obj, max_temp: float, min_temp: float, total_precip: float, 
       <div style="font-size:28px; line-height:1.5; margin:6px 0; letter-spacing:2px;">{transition}</div>
       <div style="font-size:17px; color:#e05c3a; font-weight:700;">▲ {max_temp:.1f}°</div>
       <div style="font-size:17px; color:#3a7ae0; font-weight:700;">▼ {min_temp:.1f}°</div>
-      <div style="font-size:12px; color:#5ba4e0; margin-top:6px;">💧 {total_precip:.1f} mm</div>
+      <div style="font-size:12px; color:#5ba4e0; margin-top:6px;">💧 {prob_pct}%</div>
     </div>
     """
 
@@ -166,7 +167,7 @@ def render_daily_cards(daily: pd.DataFrame, hourly: pd.DataFrame) -> None:
         transition = _weather_transition(day_df)
         with cols[i]:
             st.markdown(
-                _card_html(row.date, row.max_temp, row.min_temp, row.total_precip, transition),
+                _card_html(row.date, row.max_temp, row.min_temp, row.max_precip_prob, transition),
                 unsafe_allow_html=True,
             )
 
@@ -229,19 +230,20 @@ def render_temperature_chart(df: pd.DataFrame) -> None:
 
 
 def render_precipitation_chart(df: pd.DataFrame) -> None:
-    fig = go.Figure()
+    prob_pct = (df["precipitation_probability"] * 100).round(-1)  # 10%区切り
 
+    fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df["datetime"],
-        y=df["precipitation"],
-        name="降水量",
+        y=prob_pct,
+        name="降水確率",
         marker_color="#5ba4e0",
         opacity=0.8,
-        hovertemplate="%{x|%m/%d %H:00}<br><b>%{y:.2f} mm</b><extra></extra>",
+        hovertemplate="%{x|%m/%d %H:00}<br><b>%{y:.0f}%</b><extra></extra>",
     ))
 
     fig.update_layout(
-        title=dict(text="💧 降水量（mm / h）", font=dict(size=15, color="#333"), x=0),
+        title=dict(text="💧 降水確率（%）", font=dict(size=15, color="#333"), x=0),
         xaxis=dict(
             tickformat="%m/%d(%a)",
             dtick=86400000,
@@ -251,8 +253,9 @@ def render_precipitation_chart(df: pd.DataFrame) -> None:
             title=dict(font=dict(color="#333")),
         ),
         yaxis=dict(
-            title="mm",
-            rangemode="nonnegative",
+            title="%",
+            range=[0, 100],
+            ticksuffix="%",
             showgrid=True,
             gridcolor="#d0d0d0",
             tickfont=dict(color="#444", size=11),
