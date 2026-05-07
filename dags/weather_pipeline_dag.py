@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-# Airflow コンテナ内でプロジェクトの src/ を import できるようにする
-sys.path.insert(0, "/opt/airflow/project")
+# Airflow コンテナ内: /opt/airflow/project, GHA: $GITHUB_WORKSPACE
+sys.path.insert(0, os.environ.get("PROJECT_ROOT", "/opt/airflow/project"))
 
 default_args = {
     "owner": "airflow",
