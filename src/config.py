@@ -5,8 +5,10 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
 
+ENV = os.getenv("ENV", "local")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/app")
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{BASE_DIR / 'data' / 'mlflow.db'}")
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///data/mlflow.db")
+IS_LOCAL = ENV == "local"
 MLFLOW_EXPERIMENT_NAME = "weather-forecast"
 REG_MODEL_NAME = "weather_regression"
 CLS_MODEL_NAME = "weather_classifier"
