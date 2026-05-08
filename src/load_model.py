@@ -3,19 +3,32 @@ from __future__ import annotations
 import json
 import tempfile
 from datetime import datetime
+from typing import List, Union
 
 import mlflow.sklearn
+from mlflow.entities.model_registry import ModelVersion
+from mlflow.store.entities import PagedList
 from mlflow.tracking import MlflowClient
+from mlflow.exceptions import MlflowException
 
-from src.config import CLS_MODEL_NAME, MLFLOW_TRACKING_URI, REG_MODEL_NAME
+from src.config import ENV, IS_LOCAL, CLS_MODEL_NAME, MLFLOW_TRACKING_URI, REG_MODEL_NAME
 
 
 def _latest_version(model_name: str) -> tuple[str, str]:
     """最新バージョンの (version, run_id) を返す。"""
     client = MlflowClient()
-    versions = client.search_model_versions(f"name='{model_name}'")
+
+    versions: Union[PagedList[ModelVersion], List[ModelVersion]]
+    if IS_LOCAL:
+        versions = client.search_model_versions(f"name='{model_name}'")
+    else:
+        try:
+            versions = [client.get_model_version_by_alias(model_name, ENV)]
+        except MlflowException:
+            versions = []
+
     if not versions:
-        raise ValueError(f"Model '{model_name}' has no registered versions.")
+        raise ValueError(f"Model '{model_name}' Alias (Environment: '{ENV}') has no registered versions.")
     latest = max(versions, key=lambda v: int(v.version))
     return latest.version, latest.run_id
 
