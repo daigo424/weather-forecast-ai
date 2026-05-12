@@ -18,12 +18,12 @@ services:
 
   mlflow:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.mlflow
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mlflow
     container_name: mlflow
     working_dir: /app
     volumes:
-      - ..:/app
+      - ../..:/app
     command: >
       mlflow server
       --host 0.0.0.0
@@ -35,8 +35,8 @@ services:
 
   airflow:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.airflow
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.airflow
     container_name: airflow
     depends_on:
       db:
@@ -55,17 +55,17 @@ services:
       - GIT_PYTHON_REFRESH=quiet
       - LGBM_N_JOBS=1
     volumes:
-      - ../dags:/opt/airflow/dags
-      - ..:/opt/airflow/project
-      - ../data:/app/data
+      - ../../dags:/opt/airflow/dags
+      - ../..:/opt/airflow/project
+      - ../../data:/app/data
     ports:
       - "8080:8080"
     command: airflow standalone
 
   api:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.api
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
     container_name: weather-api
     depends_on:
       db:
@@ -79,7 +79,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/app
       - GIT_PYTHON_REFRESH=quiet
     volumes:
-      - ../data:/app/data
+      - ../../data:/app/data
     ports:
       - "8000:8000"
 
@@ -91,7 +91,7 @@ services:
     environment:
       - API_URL=http://api:8000
     volumes:
-      - ../src/streamlit_app.py:/app/streamlit_app.py
+      - ../../src/streamlit_app.py:/app/streamlit_app.py
       - frontend_cache:/root/.cache/pip
     working_dir: /app
     command: >
