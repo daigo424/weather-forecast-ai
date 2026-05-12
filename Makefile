@@ -2,7 +2,7 @@ SHELL := /bin/bash
 -include .env
 export
 
-COMPOSE := docker compose -f docker/docker-compose.yml
+COMPOSE := docker compose -f infra/docker/docker-compose.yml
 
 build:
 	$(COMPOSE) build
