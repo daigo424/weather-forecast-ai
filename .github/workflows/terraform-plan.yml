@@ -6,6 +6,7 @@ on:
       - "**/*.tf"
       - "**/*.tfvars"
       - ".github/workflows/**"
+  workflow_dispatch:
 
 env:
   TF_WORKING_DIR: "infra/terraform"   # Change to e.g. "terraform" if .tf files are in a subdirectory
@@ -24,8 +25,34 @@ jobs:
         environment: [prod, test]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for relevant changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            DIR="${{ env.TF_WORKING_DIR }}"
+            if [ "$DIR" = "." ]; then
+              PATTERN='\.(tf|tfvars)$'
+            else
+              PATTERN="^${DIR}/.*\.(tf|tfvars)$"
+            fi
+            CHANGED="$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" \
+              | grep -E "$PATTERN" || true)"
+            if [ -z "$CHANGED" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
       - name: Resolve account ID
+        if: steps.changes.outputs.skip != 'true'
         id: account
         run: |
           case "${{ matrix.environment }}" in
@@ -34,28 +61,158 @@ jobs:
           esac
 
       - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.changes.outputs.skip != 'true'
         with:
-          role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsProjectDeployRole
+          role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsWorkloadDeployRole
           aws-region: ap-northeast-1
 
       - uses: hashicorp/setup-terraform@v3
+        if: steps.changes.outputs.skip != 'true'
 
       - name: Terraform init
+        if: steps.changes.outputs.skip != 'true'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform init -backend-config=backend.hcl \
-            -backend-config="key=projects/${{ vars.PROJECT_NAME }}/${{ matrix.environment }}/terraform.tfstate"
+            -backend-config="key=workloads/${{ vars.WORKLOAD_NAME }}/${{ matrix.environment }}/additional_github_repos/${{ github.repository }}/terraform.tfstate"
 
       - name: Terraform fmt
+        if: steps.changes.outputs.skip != 'true'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
 
       - name: Terraform validate
+        if: steps.changes.outputs.skip != 'true'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
 
       - name: Terraform plan
+        if: steps.changes.outputs.skip != 'true'
+        id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
           TF_VAR_environment: ${{ matrix.environment }}
-        run: terraform plan -input=false -no-color
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color 2>&1 | tee /tmp/plan_output.txt
+
+      - name: Upload plan artifact
+        if: always() && steps.changes.outputs.skip != 'true'
+        run: |
+          mkdir -p /tmp/plan_artifact
+          TARGET="${{ vars.WORKLOAD_NAME }}:${{ matrix.environment }}"
+          OUTCOME="${{ steps.plan.outcome }}"
+          printf '{"target":"%s","outcome":"%s"}' "$TARGET" "$OUTCOME" > /tmp/plan_artifact/result.json
+          [ -f /tmp/plan_output.txt ] && cp /tmp/plan_output.txt /tmp/plan_artifact/output.txt || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plan-${{ matrix.environment }}
+          path: /tmp/plan_artifact/
+
+  all-plans-passed:
+    needs: [plan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: plan-*
+          path: /tmp/plans
+
+      - name: Post plan results to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const plansDir = '/tmp/plans';
+            if (!fs.existsSync(plansDir)) return;
+
+            const dirs = fs.readdirSync(plansDir).sort();
+            for (const dir of dirs) {
+              const resultFile = path.join(plansDir, dir, 'result.json');
+              const outputFile = path.join(plansDir, dir, 'output.txt');
+              if (!fs.existsSync(resultFile)) continue;
+
+              const { target, outcome } = JSON.parse(fs.readFileSync(resultFile, 'utf8'));
+              const output = fs.existsSync(outputFile)
+                ? fs.readFileSync(outputFile, 'utf8')
+                : '(No plan output — an earlier step may have failed)';
+
+              const succeeded = outcome === 'success';
+              const noChanges = output.includes('No changes.');
+              const icon = !succeeded ? '❌' : noChanges ? '✅' : '🔄';
+              const summary = !succeeded ? 'Plan failed' : noChanges ? 'No changes' : 'Changes detected';
+
+              const MAX = 50000;
+              const truncated = output.length > MAX ? output.slice(0, MAX) + '\n... (truncated)' : output;
+
+              const marker = `<!-- terraform-plan:${target} -->`;
+              const body = [
+                marker,
+                `### ${icon} \`${target}\` — ${summary}`,
+                '<details><summary>Show plan output</summary>',
+                '',
+                '```',
+                truncated,
+                '```',
+                '</details>',
+              ].join('\n');
+
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+              const existing = comments.find(c => c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            }
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## Terraform Plan Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Target | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          for dir in $(ls /tmp/plans 2>/dev/null | sort); do
+            result_file="/tmp/plans/${dir}/result.json"
+            output_file="/tmp/plans/${dir}/output.txt"
+            [ -f "$result_file" ] || continue
+            target=$(python3 -c "import json; print(json.load(open('${result_file}'))['target'])")
+            outcome=$(python3 -c "import json; print(json.load(open('${result_file}'))['outcome'])")
+            if [ "$outcome" != "success" ]; then
+              echo "| \`${target}\` | ❌ Plan failed |" >> "$GITHUB_STEP_SUMMARY"
+            elif grep -q "No changes." "$output_file" 2>/dev/null; then
+              echo "| \`${target}\` | ✅ No changes |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| \`${target}\` | 🔄 Changes detected |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: All plans passed
+        run: |
+          if [ "${{ needs.plan.result }}" != "success" ]; then
+            echo "One or more plan jobs failed"
+            exit 1
+          fi
