@@ -1,134 +1,132 @@
 # Weather Forecast AI — MLOps Pipeline
 
-An end-to-end MLOps pipeline that fetches Tokyo weather data, trains a LightGBM model with NWP bias correction, and serves 7-day predictions (precipitation probability, temperature, weather conditions) through a REST API and Streamlit dashboard.
+An end-to-end MLOps pipeline that fetches Tokyo weather data from Open-Meteo, trains LightGBM error-correction models on top of NWP (Numerical Weather Prediction) forecasts, and serves 7-day predictions through a REST API and Streamlit dashboard.
 
 ## Overview
 
-The system predicts hourly weather for the next 168 hours (7 days) across five Tokyo locations. A daily Airflow pipeline handles data ingestion, NWP forecast fetching, model training, evaluation, and promotion to the model registry — with no manual intervention required.
+The core idea is **NWP bias correction**: rather than predicting weather from scratch, the system learns the systematic error between NWP model output and ERA5 reanalysis actuals, then corrects the NWP forecast at inference time.
 
-**Prediction targets (tokyo\_center):**
+**Correction targets:**
 
-| Type | Targets |
+| Target | Unit |
 |---|---|
-| Regression | Temperature, humidity, dew point, pressure, cloud cover (low/mid/high/total), precipitation, rain, wind speed/direction/gusts |
-| Classification | WMO weather code (5 classes: clear / cloudy / rain / snow-ice / thunderstorm), precipitation binary |
+| Temperature | °C |
+| Precipitation | mm |
+| Total cloud cover | % |
+| Low cloud cover | % |
 
-The frontend displays temperature, weather icons, and **precipitation probability (10% intervals)** derived from the binary precipitation classifier's `predict_proba`.
+Weather code (WMO) is re-derived from corrected values (cloud cover, precipitation, temperature) and CAPE at inference time — not taken from NWP directly. This ensures the displayed weather icon is consistent with the corrected forecast.
 
 ## Architecture
 
 ```
-Open-Meteo Archive API          Open-Meteo Historical Forecast API
- (ERA5 actuals, initial only)       (past NWP forecasts, daily)
-        │                                    │
-        ▼                                    ▼
-  weather_hourly  ◄──── forecast API ──►  weather_nwp_forecast
-  (actual data)      (past_days sync)       (NWP forecast data)
-        │                                    │
-        └──────────────┬─────────────────────┘
-                       ▼
-                 train_model  (LightGBM MultiOutput + NWP bias correction)
-                       │
-                 MLflow Tracking
-                       │
-                 evaluate_model  (MAE threshold check)
-                       │
-                 register_model  (MLflow Model Registry)
-                       │
-               ┌───────┴───────┐
-               ▼               ▼
-            FastAPI        Streamlit
-         /forecast          Dashboard
-         /model-info
-         /today
+Open-Meteo Archive API               Open-Meteo Previous-Runs API
+(ERA5 actuals)                        (past NWP forecasts)
+       │                                       │
+       ▼                                       ▼
+  01_raw/actual/                         01_raw/forecast/
+       │                                       │
+       ▼                                       ▼
+  02_processed/actual/                   02_processed/forecast/
+                        │           │
+                        └─── merge ─┘
+                               │
+                    error = actual − NWP
+                               │
+                    build_features() [lag/rolling]
+                               │
+                        03_features/
+                               │
+                    LightGBM × 4 models
+                    (one per correction target)
+                               │
+                    WeatherForecastPyfunc
+                    (bundles all 4 models)
+                               │
+                     MLflow Model Registry
+                      ┌────────┴────────┐
+                      ▼                 ▼
+              Feast (Redis)          FastAPI
+          [error lag features]    /forecast /today
+                      │              /model-info
+                      └────────┬────────┘
+                               ▼
+                           Streamlit
+                      (7-day dashboard)
 ```
 
 ### Services
 
 | Service | Port | Description |
 |---|---|---|
-| PostgreSQL | 5432 | Weather observation, NWP forecast & prediction store |
-| MLflow | 5000 | Experiment tracking + model registry (local Docker) |
+| PostgreSQL | 5432 | MLflow backend store + Airflow metadata + Feast offline store |
+| MLflow | 5000 | Experiment tracking + model registry |
+| Redis | 6379 | Feast online store (error lag features) |
 | Airflow | 8080 | Daily pipeline orchestration |
 | FastAPI | 8000 | Prediction REST API |
 | Streamlit | 8501 | 7-day forecast dashboard |
+| Evidently UI | 8088 | Model evaluation reports |
+| Feast UI | 8888 | Feature store browser |
 
 ## Tech Stack
 
-- **Language:** Python 3.12
-- **ML:** LightGBM, scikit-learn (MultiOutputRegressor / MultiOutputClassifier)
-- **MLOps:** MLflow (experiment tracking, model registry)
-- **Orchestration:** Apache Airflow 3.x (daily schedule)
-- **API:** FastAPI + Uvicorn
-- **Frontend:** Streamlit + Plotly
-- **Database:** PostgreSQL + SQLAlchemy + Alembic
-- **Infrastructure:** Docker Compose
-- **Package manager:** uv
-
-## Repository Structure
-
-```
-weather-forecast-ai/
-├── src/
-│   ├── api/
-│   │   └── main.py              # FastAPI endpoints
-│   ├── config.py                # Env-var backed configuration
-│   ├── models.py                # SQLAlchemy ORM models
-│   ├── db.py                    # DB engine / session
-│   ├── fetch_data.py            # Actual weather ingestion (ERA5 initial / forecast API daily)
-│   ├── fetch_forecast.py        # NWP forecast ingestion (historical / inference)
-│   ├── fetch_today.py           # Current conditions (DB → API fallback)
-│   ├── feature_engineering.py   # Lag / diff / rolling / NWP features
-│   ├── train_model.py           # LightGBM training + MLflow logging
-│   ├── evaluate_model.py        # MAE / RMSE / F1 metrics
-│   ├── predict.py               # Non-recursive 168-step direct forecast
-│   ├── load_model.py            # Load latest model from registry
-│   ├── save_model.py            # Promote run to model registry
-│   └── streamlit_app.py         # Dashboard
-├── dags/
-│   └── weather_pipeline_dag.py  # Airflow DAG
-├── alembic/                     # DB migrations
-├── docker/
-│   ├── docker-compose.yml
-│   ├── Dockerfile.api
-│   ├── Dockerfile.airflow
-│   └── Dockerfile.mlflow
-├── notebooks/                   # Research & experimentation (see below)
-├── data/                        # MLflow DB + artifacts (git-ignored)
-├── Makefile
-└── pyproject.toml
-```
-
-## Notebooks
-
-The `notebooks/` directory documents the research phase that informed the production pipeline:
-
-| Notebook | Description |
+| Category | Tools |
 |---|---|
-| `01_eda.ipynb` | Exploratory data analysis of Tokyo weather data |
-| `02_feature_engineering.ipynb` | Evaluating lag / diff / spatial feature strategies |
-| `03_baseline_model.ipynb` | Linear regression and decision tree baselines |
-| `04_model_improvement.ipynb` | LightGBM hyperparameter tuning |
-| `05_model_comparison.ipynb` | LightGBM vs XGBoost final comparison |
+| Language | Python 3.13 |
+| ML | LightGBM |
+| MLOps | MLflow (tracking + registry), Evidently AI (evaluation) |
+| Feature Store | Feast (Redis online store + PostgreSQL offline store) |
+| Orchestration | Apache Airflow 3.x (daily schedule) |
+| API | FastAPI + Uvicorn |
+| Frontend | Streamlit + Plotly |
+| Database | PostgreSQL |
+| Infrastructure | Docker Compose |
+| Package manager | uv |
+| Data versioning | DVC + S3 (golden datasets) |
 
-Raw source data (JMA CSVs, 2021–2025) lives in `notebooks/data/original/`.
+## ML Pipeline
 
-## Feature Engineering
+### Training flow
 
-For each of five Tokyo locations the pipeline generates:
+```
+fetch_data → train_model → evaluate_model → materialize_features → cleanup_mlflow
+```
 
-- **Raw features:** 15 hourly meteorological variables
-- **Time features:** hour, day-of-year, month (sin/cos encoded)
-- **Spatial features:** difference from tokyo\_center per variable
-- **Wind direction features:** sin/cos components (treats 0°/360° correctly as circular)
-- **NWP features:** same-time NWP value, bias (actual − NWP), T+1 NWP forecast value
-- **Lag features:** t−1, t−6, t−24
-- **Diff features:** t−(t−1), t−(t−3)
-- **Rolling mean:** 6 h and 24 h windows
+1. **fetch_data** — Incrementally fetches ERA5 actuals and NWP past forecasts from Open-Meteo, saves as JSON in `01_raw/`, then processes to parquet in `02_processed/`
+2. **train_model** — Merges actual/forecast, computes per-target error (`actual − NWP`), builds lag/rolling features, trains 4 LightGBM regressors, bundles into `WeatherForecastPyfunc`, and registers to MLflow Model Registry with `evaluated_successful=0`
+3. **evaluate_model** — Loads the registered model, evaluates MAE/RMSE/Bias per target using Evidently AI, sets `evaluated_successful=1` tag if all thresholds pass
+4. **materialize_features** — Applies Feast feature definitions and pushes recent error lag features to Redis (online store) for low-latency inference
+5. **cleanup_mlflow** — Soft-deletes old model versions (keeps latest 5 + all `evaluated_successful=1`) and runs `mlflow gc`
 
-### NWP Bias Correction
+### Inference flow
 
-During training the model learns the regional bias between NWP forecasts and actuals (`actual − NWP`). At inference time, the T_now feature vector is computed once, then for each step k=1…168 the `nwp_next_*` columns are overridden with the actual future NWP forecast for that timestep. This non-recursive approach eliminates error accumulation across steps.
+1. Fetch future NWP forecast from Open-Meteo `/v1/forecast` (including CAPE)
+2. Call `WeatherForecastPyfunc.predict()`:
+   - Build features from NWP input
+   - Fetch error lag features from Feast online store (Redis)
+   - Apply each LightGBM model: `corrected = nwp_value + predicted_error`
+3. Remap weather code from corrected values + CAPE
+4. Return corrected forecast DataFrame
+
+## Version Management
+
+Two independent version axes:
+
+| Version | Trigger | Numbering | Location |
+|---|---|---|---|
+| `model_interface_version` | API schema / feature structure change | Manual increment | `deployment/versions.yaml` |
+| `training_version` | Each retraining run | Auto (resets when interface version changes) | MLflow model version tag |
+
+### Active model selection
+
+```
+max(training_version) where
+  name = weather_forecast_{location}
+  AND model_interface_version = <value from deployment/versions.yaml>
+  AND evaluated_successful = "1"
+```
+
+If no model matches, the API returns HTTP 503 (model not ready) instead of crashing — enabling Blue/Green deployment where the old pod remains active.
 
 ## Getting Started
 
@@ -136,17 +134,15 @@ During training the model learns the regional bias between NWP forecasts and act
 
 - Docker Desktop
 - `uv` (`pip install uv`)
-- (Optional) NVIDIA GPU + CUDA drivers for accelerated training
 
 ### 1. Configure environment
 
 ```bash
 cp .env.example .env
-# Default: local Docker MLflow at http://mlflow:5000
-# To use DagsHub instead, swap the MLFLOW_TRACKING_URI in .env and add credentials
+# Edit .env as needed (defaults work for local Docker)
 ```
 
-### 2. Start all services
+### 2. Start services
 
 ```bash
 make build
@@ -158,67 +154,65 @@ make up
 | Airflow | http://localhost:8080 | admin / admin |
 | MLflow | http://localhost:5000 | — |
 | Dashboard | http://localhost:8501 | — |
+| Evidently | http://localhost:8088 | — |
+| Feast UI | http://localhost:8888 | — |
 
-### 3. Initialize the database
-
-Run once to populate the DB with historical data (30–60 min):
+### 3. Initial data fetch (first time only)
 
 ```bash
-make db-migrate   # Create tables (including weather_nwp_forecast)
-make db-init      # ERA5 actuals (2021–) + NWP forecast backfill (past 1 year)
+make fetch-all-params    # Fetch ERA5 actuals + NWP forecasts from 2023-01-01
+make process-all-params  # Process raw JSON → parquet
 ```
 
-### 4. Enable the daily Airflow pipeline
+This takes 30–60 minutes depending on network speed.
 
-Activate the `weather_forecast_pipeline` DAG in the Airflow UI. The first run trains and registers the model automatically. After that, the pipeline runs every day and handles data refresh, retraining, and model promotion.
+### 4. Train the model
 
-## Airflow Pipeline
-
+```bash
+make train      # Feature build + training + MLflow registration
+make evaluate   # Evaluation + evaluated_successful tag
 ```
-fetch_data → fetch_nwp_forecast → train_model → evaluate_model → register_model
-```
 
-| Task | Description |
-|---|---|
-| `fetch_data` | Syncs the past 14 days of actual weather via forecast API `past_days` (no ERA5 lag) |
-| `fetch_nwp_forecast` | Backfills the past 1 year of NWP forecasts from historical-forecast-api |
-| `train_model` | Trains LightGBM models with NWP features and logs metrics / artifacts to MLflow |
-| `evaluate_model` | Blocks registration if `reg_mae > 10.0` |
-| `register_model` | Promotes the validated run to MLflow Model Registry |
+Or activate the `weather_forecast_pipeline` DAG in Airflow — it handles fetch, train, evaluate, and materialize automatically on a daily schedule.
+
+### 5. View the dashboard
+
+Open http://localhost:8501. If no model is ready yet, a banner explains how to train one.
 
 ## Make Targets
 
 | Target | Description |
 |---|---|
-| `make build` | Build Docker images |
+| `make build` | Build all Docker images |
 | `make up` / `make down` | Start / stop all services |
-| `make db-migrate` | Run Alembic migrations only (create / alter tables) |
-| `make db-init` | Migration + ERA5 backfill (2021–) + NWP backfill (initial setup) |
-| `make fetch` | Sync past 14 days of actual weather via forecast API (no ERA5 lag) |
-| `make fetch-nwp` | Sync past 1 year of NWP forecasts from historical-forecast-api |
-| `make train` | Train model locally |
-| `make predict` | Run prediction locally |
-| `make test` | Run pytest |
-| `make api-local` | Start FastAPI locally (port 8000) |
-| `make streamlit` | Start Streamlit locally (port 8501) |
-| `make mlflow-local` | Start MLflow UI locally (port 5000) |
+| `make fetch-all-params` | Fetch ERA5 actuals + NWP forecasts (2023-01-01 to present) |
+| `make process-all-params` | Process raw JSON → parquet (same date range) |
+| `make fetch-actual-all-params` | Fetch ERA5 actuals only (incremental) |
+| `make fetch-forecast-all-params` | Fetch NWP forecasts only (incremental) |
+| `make train` | Run training pipeline locally |
+| `make evaluate` | Run evaluation + promotion locally |
+| `make materialize` | Apply Feast feature definitions + materialize to Redis |
+| `make s3-upload-raw` | Upload `01_raw/` to S3 |
+| `make s3-download-raw` | Download `01_raw/` from S3 |
+| `make golden-dataset-push` | Push golden dataset to S3 via DVC |
+| `make golden-dataset-pull` | Pull golden dataset from S3 via DVC |
+| `make logs` | Tail all service logs |
+| `make ps` | Show container status |
+| `make db` | Open psql shell |
 
 ## API Endpoints
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `GET /health` | — | Health check |
-| `GET /forecast?hours=168` | — | Full hourly forecast including precipitation probability |
-| `GET /model-info` | — | Current model version, run name, and training metadata |
-| `GET /today` | — | Current observed conditions |
-| `POST /predict` | `{"hours": 168, "location": "tokyo_center"}` | Forecast for a specific location |
+| `GET /health` | — | Model readiness status per location |
+| `GET /forecast` | `?hours=168&location=tokyo` | Corrected hourly forecast (168 h) |
+| `GET /model-info` | — | Active model version and training metadata |
+| `GET /today` | `?location=tokyo` | Current observed conditions from Open-Meteo |
+| `GET /historical-comparison` | `?days=7&location=tokyo` | NWP vs corrected vs ERA5 for past N days |
+| `POST /predict` | `{"hours": 168, "location": "tokyo"}` | Same as GET /forecast, POST form |
+
+All endpoints return HTTP 503 with a descriptive message when no trained model is available.
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/app` | PostgreSQL connection string |
-| `MLFLOW_TRACKING_URI` | `http://mlflow:5000` | MLflow backend — local Docker or DagsHub URL |
-| `MLFLOW_TRACKING_USERNAME` | — | DagsHub username (DagsHub only) |
-| `MLFLOW_TRACKING_PASSWORD` | — | DagsHub access token (DagsHub only) |
-| `LGBM_N_JOBS` | `-1` | LightGBM thread count (set to `1` in Docker to avoid contention) |
+See `.env.example` for the full list with descriptions.

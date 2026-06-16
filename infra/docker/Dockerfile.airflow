@@ -1,4 +1,4 @@
-FROM apache/airflow:3.2.1
+FROM apache/airflow:3.2.1-python3.13
 
 USER root
 RUN apt-get update && \
@@ -10,10 +10,16 @@ RUN pip install --no-cache-dir \
     'mlflow==3.11.1' \
     'scikit-learn>=1.8.0' \
     'lightgbm>=4.0' \
-    'fastapi' \
     'requests' \
     'pandas' \
     'numpy' \
     'pyarrow' \
     'psycopg2-binary' \
-    'alembic>=1.13'
+    'alembic>=1.13' \
+    'evidently>=0.7.21' \
+    'feast[redis]>=0.40.0' \
+    'psutil' \
+    'cloudpathlib[s3]' \
+    's3fs' \
+    'boto3' \
+    && pip install --no-cache-dir --upgrade 'uvicorn[standard]>=0.35.0'

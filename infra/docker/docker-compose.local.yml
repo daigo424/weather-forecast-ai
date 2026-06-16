@@ -1,0 +1,199 @@
+services:
+  db:
+    image: postgres:15
+    container_name: db
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${MLFLOW_DB_NAME}
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-mlflow-db.sql:/docker-entrypoint-initdb.d/02-mlflow.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      retries: 5
+
+  mlflow:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.mlflow
+    container_name: mlflow
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - MLFLOW_SERVER_ALLOWED_HOSTS=*
+    volumes:
+      - ../../data:/app/data
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql+psycopg2://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/${MLFLOW_DB_NAME}
+      --serve-artifacts
+      --artifacts-destination /app/data/mlflow-artifacts
+      --default-artifact-root mlflow-artifacts:/
+    ports:
+      - "5000:5000"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  airflow:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.airflow
+    container_name: airflow
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      - TZ=Asia/Tokyo
+      - _AIRFLOW_WWW_USER_USERNAME=admin
+      - _AIRFLOW_WWW_USER_PASSWORD=admin
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/${AIRFLOW_DB_NAME}
+      - MLFLOW_TRACKING_URI=${MLFLOW_REMOTE_TRACKING_URI:-http://mlflow:5000}
+      - MLFLOW_BACKEND_STORE_URI=postgresql+psycopg2://${DB_USERNAME}:${DB_PASSWORD}@db:${DB_PORT}/${MLFLOW_DB_NAME}
+      - MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING=true
+      # artifacts ダウンロード時の tqdm バーを無効化（Airflow が stderr → ERROR にマッピングするため）
+      - MLFLOW_ENABLE_ARTIFACTS_PROGRESS_BAR=false
+      - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME:-}
+      - MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD:-}
+      - OPEN_METEO_API_KEY=${OPEN_METEO_API_KEY:-}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=${DB_PORT}
+      - FEAST_DB_NAME=${FEAST_DB_NAME}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATA_DIR=/app/data
+      - EVIDENTLY_WORKSPACE=/app/data/evidently
+      - PYTHONPATH=/opt/airflow/project/src:/opt/airflow/project
+      - PROJECT_ROOT=/opt/airflow/project
+      - GIT_PYTHON_REFRESH=quiet
+      - LGBM_N_JOBS=1
+      # JWT 署名キー（24バイト自動生成では SHA512 推奨長に満たないため明示設定）
+      - AIRFLOW__CORE__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      # standalone モードでは api-server とログサーバーが同一コンテナ内で動くため localhost を指定
+      - AIRFLOW__LOGGING__WORKER_LOG_SERVER_HOST=localhost
+    volumes:
+      - ../../dags:/opt/airflow/dags
+      - ../..:/opt/airflow/project
+      - ../../data:/app/data
+    ports:
+      - "8080:8080"
+    # WSL2/Docker Desktop では IPv6 ルーティングが未設定で ENETUNREACH になるため無効化
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: airflow standalone
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: api
+    depends_on:
+      mlflow:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      - MLFLOW_TRACKING_URI=${MLFLOW_REMOTE_TRACKING_URI:-http://mlflow:5000}
+      - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME:-}
+      - MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD:-}
+      - OPEN_METEO_API_KEY=${OPEN_METEO_API_KEY:-}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATA_DIR=/app/data
+      - PYTHONPATH=/app/src:/app/project/src:/app/project
+    volumes:
+      - ../../src:/app/src
+      - ../../data:/app/data
+      - ../..:/app/project
+      - ../../feature_store:/app/feature_store
+      - ../../deployment:/app/deployment
+    ports:
+      - "8000:8000"
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+      net.ipv6.conf.default.disable_ipv6: 1
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  streamlit:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.streamlit
+    container_name: streamlit
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      - API_URL=http://api:8000
+    volumes:
+      - ../../src/frontend:/app/src/frontend
+    ports:
+      - "8501:8501"
+
+  evidently-ui:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.evidently
+    container_name: evidently-ui
+    environment:
+      - TZ=Asia/Tokyo
+    volumes:
+      - ../../data/evidently:/workspace
+    ports:
+      - "8088:8088"
+
+  feast-ui:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.feast-ui
+    container_name: feast-ui
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=${DB_PORT}
+      - FEAST_DB_NAME=${FEAST_DB_NAME}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../../feature_store:/feature_store
+    ports:
+      - "8888:8888"
+
+volumes:
+  postgres_data:

@@ -1,8 +1,15 @@
-SHELL := /bin/bash
 -include .env
 export
 
-COMPOSE := docker compose -f infra/docker/docker-compose.yml
+# src/ をモジュール検索パスに追加することで
+# apps.* / packages.* を src. プレフィックスなしで import できるようにする
+export PYTHONPATH := src
+
+COMPOSE := docker compose -f infra/docker/docker-compose.local.yml
+RUN := $(COMPOSE) run --rm --remove-orphans
+EXEC := $(COMPOSE) exec
+DB_URL := postgresql://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(MLFLOW_DB_NAME)?sslmode=$(DB_SSLMODE)
+AWS_PROFILE_EKS := weather-forecast-ai-test
 
 build:
 	$(COMPOSE) build
@@ -19,52 +26,70 @@ down:
 logs:
 	$(COMPOSE) logs -f
 
-api-up:
-	$(COMPOSE) up -d api
+rm-volumes:
+	$(COMPOSE) down --volumes
 
-api-down:
-	$(COMPOSE) stop api
+fetch-actual-all-params:
+	uv run python -m apps.fetch_actual_all_params
 
-frontend-up:
-	$(COMPOSE) up -d frontend
+fetch-forecast-all-params:
+	uv run python -m apps.fetch_forecast_all_params
 
-frontend-down:
-	$(COMPOSE) stop frontend
+fetch-all-params:
+	uv run python -m apps.fetch_actual_all_params --start 2023-01-01 --end 2025-12-31
+	uv run python -m apps.fetch_forecast_all_params --start 2023-01-01 --end 2025-12-31
 
-mlflow-up:
-	$(COMPOSE) up -d mlflow
+process-actual-all-params:
+	uv run python -m apps.process_actual_all_params
 
-airflow-up:
-	$(COMPOSE) up -d airflow
+process-forecast-all-params:
+	uv run python -m apps.process_forecast_all_params
 
-# ローカル実行
-db-init: db-migrate
-	uv run python -c "from src.fetch_data import run; from datetime import date; run(start=date(2021, 1, 1))"
-	uv run python -m src.fetch_forecast
+process-all-params:
+	uv run python -m apps.process_actual_all_params --start 2023-01-01 --end 2025-12-31
+	uv run python -m apps.process_forecast_all_params --start 2023-01-01 --end 2025-12-31
 
-db-migrate:
-	uv run alembic upgrade head
+# --- S3 データ同期 ---
 
-fetch:
-	uv run python -c "from src.fetch_data import sync; sync()"
+s3-upload-raw:
+	uv run python scripts/s3_sync_raw.py upload
 
-fetch-nwp:
-	uv run python -m src.fetch_forecast
+s3-download-raw:
+	uv run python scripts/s3_sync_raw.py download
+
+# --- ゴールデンデータセット管理 (DVC) ---
+# DVC は .dvc/config の profile で S3 に接続する。
+# AWS_PROFILE は誤操作防止のゲートとして要求する（実際の認証には使わない）。
+# 使用例: AWS_PROFILE=test-weather-forecast-ai make golden-dataset-push
+
+golden-dataset-push:
+	uv run python scripts/dvc_golden_dataset.py push
+
+golden-dataset-pull:
+	uv run python scripts/dvc_golden_dataset.py pull
+
+golden-dataset-status:
+	uv run dvc status data/golden-dataset.dvc
 
 train:
-	uv run python -m src.train_model
+	uv run python -m apps.train_pipeline
 
-predict:
-	uv run python -m src.predict
+evaluate:
+	uv run python -m apps.evaluate_and_promote
 
-test:
-	uv run pytest tests/ -v
+materialize:
+	uv run python -m apps.materialize_features
 
-api-local:
-	uv run uvicorn src.api.main:app --reload --port 8000
+# --- 補助 ---
 
-streamlit:
-	uv run streamlit run src/streamlit_app.py --server.port 8501
+ps:
+	$(COMPOSE) ps
 
-mlflow-local:
-	uv run mlflow ui --backend-store-uri sqlite:///data/mlflow.db --port 5000
+shell-%:
+	$(EXEC) $* bash || $(EXEC) $* sh || $(EXEC) $* ash
+
+shell-run-%:
+	$(RUN) --entrypoint bash $* || $(RUN) --entrypoint sh $* || $(RUN) --entrypoint ash $*
+
+db:
+	$(EXEC) db psql "$(DB_URL)"
