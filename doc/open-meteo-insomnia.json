@@ -1,0 +1,134 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-05-17T00:00:00.000Z",
+  "__export_source": "claude-code",
+  "resources": [
+    {
+      "_id": "wrk_weather_forecast_ai",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "weather-forecast-ai / Open-Meteo",
+      "description": "Open-Meteo API requests used in weather-forecast-ai",
+      "scope": "collection"
+    },
+    {
+      "_id": "fld_fetch_data",
+      "_type": "request_group",
+      "parentId": "wrk_weather_forecast_ai",
+      "name": "fetch_data.py",
+      "description": "Historical archive data and near-real-time sync"
+    },
+    {
+      "_id": "fld_fetch_forecast",
+      "_type": "request_group",
+      "parentId": "wrk_weather_forecast_ai",
+      "name": "fetch_forecast.py",
+      "description": "NWP forecast data (historical and future)"
+    },
+    {
+      "_id": "fld_fetch_today",
+      "_type": "request_group",
+      "parentId": "wrk_weather_forecast_ai",
+      "name": "fetch_today.py",
+      "description": "Current weather for a single location"
+    },
+
+    {
+      "_id": "req_archive_historical_range",
+      "_type": "request",
+      "parentId": "fld_fetch_data",
+      "name": "Archive API — Historical Range (fetch_data._call_api)",
+      "description": "ERA5 archive hourly data for all 5 Tokyo locations over a date range. Used in fetch_data.run().",
+      "method": "GET",
+      "url": "https://archive-api.open-meteo.com/v1/archive",
+      "parameters": [
+        { "id": "pair_arc_lat",      "name": "latitude",   "value": "35.6812,36.05,35.30,35.68,35.68" },
+        { "id": "pair_arc_lon",      "name": "longitude",  "value": "139.7671,139.77,139.77,140.20,139.30" },
+        { "id": "pair_arc_start",    "name": "start_date", "value": "2025-01-01" },
+        { "id": "pair_arc_end",      "name": "end_date",   "value": "2025-01-31" },
+        { "id": "pair_arc_hourly",   "name": "hourly",     "value": "temperature_2m,relative_humidity_2m,dew_point_2m,pressure_msl,surface_pressure,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m" },
+        { "id": "pair_arc_tz",       "name": "timezone",   "value": "Asia/Tokyo" }
+      ],
+      "headers": [],
+      "body": {}
+    },
+
+    {
+      "_id": "req_forecast_sync_past_days",
+      "_type": "request",
+      "parentId": "fld_fetch_data",
+      "name": "Forecast API — Sync Past Days (fetch_data.sync)",
+      "description": "Uses NWP forecast past_days to backfill recent data without ERA5 lag. forecast_days=0 means no future data.",
+      "method": "GET",
+      "url": "https://api.open-meteo.com/v1/forecast",
+      "parameters": [
+        { "id": "pair_sync_lat",      "name": "latitude",      "value": "35.6812,36.05,35.30,35.68,35.68" },
+        { "id": "pair_sync_lon",      "name": "longitude",     "value": "139.7671,139.77,139.77,140.20,139.30" },
+        { "id": "pair_sync_past",     "name": "past_days",     "value": "14" },
+        { "id": "pair_sync_future",   "name": "forecast_days", "value": "0" },
+        { "id": "pair_sync_hourly",   "name": "hourly",        "value": "temperature_2m,relative_humidity_2m,dew_point_2m,pressure_msl,surface_pressure,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m" },
+        { "id": "pair_sync_tz",       "name": "timezone",      "value": "Asia/Tokyo" }
+      ],
+      "headers": [],
+      "body": {}
+    },
+
+    {
+      "_id": "req_nwp_historical_range",
+      "_type": "request",
+      "parentId": "fld_fetch_forecast",
+      "name": "Historical Forecast API — NWP Past Range (fetch_forecast.run_historical)",
+      "description": "Past NWP model output (not ERA5) via historical-forecast-api, used to build the nwp_forecasts table.",
+      "method": "GET",
+      "url": "https://historical-forecast-api.open-meteo.com/v1/forecast",
+      "parameters": [
+        { "id": "pair_nwphist_lat",    "name": "latitude",   "value": "35.6812,36.05,35.30,35.68,35.68" },
+        { "id": "pair_nwphist_lon",    "name": "longitude",  "value": "139.7671,139.77,139.77,140.20,139.30" },
+        { "id": "pair_nwphist_start",  "name": "start_date", "value": "2025-01-01" },
+        { "id": "pair_nwphist_end",    "name": "end_date",   "value": "2025-01-31" },
+        { "id": "pair_nwphist_hourly", "name": "hourly",     "value": "temperature_2m,relative_humidity_2m,dew_point_2m,pressure_msl,surface_pressure,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m" },
+        { "id": "pair_nwphist_tz",     "name": "timezone",   "value": "Asia/Tokyo" }
+      ],
+      "headers": [],
+      "body": {}
+    },
+
+    {
+      "_id": "req_nwp_current_forecast",
+      "_type": "request",
+      "parentId": "fld_fetch_forecast",
+      "name": "Forecast API — NWP Current Forecast (fetch_forecast.fetch_for_inference)",
+      "description": "Live NWP hourly forecast for the next N days (up to 16). forecast_days is computed as min((hours//24)+2, 16). Default hours=168 → forecast_days=9.",
+      "method": "GET",
+      "url": "https://api.open-meteo.com/v1/forecast",
+      "parameters": [
+        { "id": "pair_nwpfcst_lat",    "name": "latitude",      "value": "35.6812,36.05,35.30,35.68,35.68" },
+        { "id": "pair_nwpfcst_lon",    "name": "longitude",     "value": "139.7671,139.77,139.77,140.20,139.30" },
+        { "id": "pair_nwpfcst_days",   "name": "forecast_days", "value": "9" },
+        { "id": "pair_nwpfcst_hourly", "name": "hourly",        "value": "temperature_2m,relative_humidity_2m,dew_point_2m,pressure_msl,surface_pressure,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m" },
+        { "id": "pair_nwpfcst_tz",     "name": "timezone",      "value": "Asia/Tokyo" }
+      ],
+      "headers": [],
+      "body": {}
+    },
+
+    {
+      "_id": "req_current_weather_single",
+      "_type": "request",
+      "parentId": "fld_fetch_today",
+      "name": "Forecast API — Current Weather Single Location (fetch_today.fetch_current_weather)",
+      "description": "Fetches the `current` block for a single location (default: tokyo_center). Used as a fallback when today's data is not yet in the DB.",
+      "method": "GET",
+      "url": "https://api.open-meteo.com/v1/forecast",
+      "parameters": [
+        { "id": "pair_cur_lat",     "name": "latitude",  "value": "35.6812" },
+        { "id": "pair_cur_lon",     "name": "longitude", "value": "139.7671" },
+        { "id": "pair_cur_current", "name": "current",   "value": "temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,cloud_cover" },
+        { "id": "pair_cur_tz",      "name": "timezone",  "value": "Asia/Tokyo" }
+      ],
+      "headers": [],
+      "body": {}
+    }
+  ]
+}

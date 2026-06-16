@@ -1,0 +1,14 @@
+{
+  "objective": "regression",
+  "metric": "mae",
+  "n_estimators": 1000,
+  "subsample_freq": 1,
+  "learning_rate": 0.0212,
+  "num_leaves": 51,
+  "min_child_samples": 15,
+  "subsample": 0.667,
+  "colsample_bytree": 0.97,
+  "reg_alpha": 0.379,
+  "reg_lambda": 0.00382,
+  "random_state": 42
+}

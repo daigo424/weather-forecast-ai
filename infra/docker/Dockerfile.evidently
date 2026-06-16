@@ -1,0 +1,4 @@
+FROM python:3.13-slim
+RUN pip install --no-cache-dir 'evidently>=0.7.21'
+EXPOSE 8088
+CMD ["evidently", "ui", "--workspace", "/workspace", "--host", "0.0.0.0", "--port", "8088"]

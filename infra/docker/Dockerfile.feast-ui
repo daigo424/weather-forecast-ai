@@ -1,0 +1,11 @@
+FROM python:3.13-slim
+RUN pip install --no-cache-dir \
+    'feast[redis]>=0.40.0' \
+    'grpcio>=1.60.0,<2' \
+    'grpcio-health-checking>=1.60.0,<2' \
+    'grpcio-reflection>=1.60.0,<2' \
+    'grpcio-status>=1.60.0,<2' \
+    'psycopg2-binary'
+WORKDIR /feature_store
+EXPOSE 8888
+CMD ["feast", "ui", "--host", "0.0.0.0", "--port", "8888"]
