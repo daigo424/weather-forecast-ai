@@ -20,3 +20,17 @@ data/mlflow.db
 
 # CI artifacts
 run_id.txt
+
+# ML Data
+data/
+!data/**/.gitkeep
+!data/**/*.dvc
+
+# Feast registry は PostgreSQL で管理
+feature_store/feast_registry.db
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
