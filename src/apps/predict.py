@@ -102,11 +102,12 @@ def _remap_weather_code(nwp_df: pd.DataFrame, result: pd.DataFrame) -> pd.Series
     temp   = result["temperature_2m_tokyo_center"].fillna(15.0)
     cloud  = result["cloud_cover_corrected"].fillna(0)
 
-    codes = pd.Series(1, index=result.index)
-    codes[cloud  > 70]                      = 3   # 曇
-    codes[precip > 0.1]                     = 61  # 雨
-    codes[(precip > 0.1) & (temp < 2.0)]   = 71  # 雪
-    codes[(cape  > 500)  & (precip > 0.1)] = 95  # 雷雨
+    codes = pd.Series(1, index=result.index)          # 快晴
+    codes[cloud  > 30]                               = 2   # やや曇り
+    codes[cloud  > 70]                               = 3   # 曇
+    codes[precip > 0.1]                              = 61  # 雨
+    codes[(precip > 0.1) & (temp < 2.0)]             = 71  # 雪
+    codes[(cape  > 500)  & (precip > 0.1)]           = 95  # 雷雨
     return codes
 
 

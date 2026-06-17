@@ -17,29 +17,32 @@ SHOW_NWP_COMPARISON = os.getenv("ENV", "local") == "local"
 # Open-Meteo が返す WMO 天気コード → 表示クラス
 WEATHER_CODE_TO_CLASS: dict[int, int] = {
     # 快晴・ほぼ快晴
-    0: 1, 1: 1, 2: 1,
-    # 一部曇り・曇り・霧
-    3: 2, 45: 2, 48: 2,
+    0: 1, 1: 1,
+    # やや曇り
+    2: 2,
+    # 曇り・霧
+    3: 3, 45: 3, 48: 3,
     # 霧雨
-    51: 3, 53: 3, 55: 3,
+    51: 4, 53: 4, 55: 4,
     # 雨
-    61: 3, 63: 3, 65: 3,
+    61: 4, 63: 4, 65: 4,
     # にわか雨
-    80: 3, 81: 3, 82: 3,
+    80: 4, 81: 4, 82: 4,
     # 凍結霧雨・凍結雨
-    56: 4, 57: 4, 66: 4, 67: 4,
+    56: 5, 57: 5, 66: 5, 67: 5,
     # 降雪・雪粒・にわか雪
-    71: 4, 73: 4, 75: 4, 77: 4, 85: 4, 86: 4,
+    71: 5, 73: 5, 75: 5, 77: 5, 85: 5, 86: 5,
     # 雷雨・雹を伴う雷雨
-    95: 5, 96: 5, 99: 5,
+    95: 6, 96: 6, 99: 6,
 }
 
 WEATHER_CLASS_INFO: dict[int, tuple[str, str]] = {
-    1: ("晴天",   "☀️"),
-    2: ("曇天",   "☁️"),
-    3: ("雨",     "☔"),
-    4: ("雪・氷", "❄️"),
-    5: ("雷雨",   "⚡️"),
+    1: ("晴天",     "☀️"),
+    2: ("やや曇り", "🌤️"),
+    3: ("曇天",     "☁️"),
+    4: ("雨",     "☔"),
+    5: ("雪・氷", "❄️"),
+    6: ("雷雨",   "🌩️"),
 }
 
 DOW_JA = ["月", "火", "水", "木", "金", "土", "日"]
@@ -137,9 +140,10 @@ def make_daily(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _weather_transition(day_df: pd.DataFrame) -> list[str]:
-    """朝(6-11)/昼(12-17)/夜(18-23) の代表天気アイコンリストを返す（最大3要素、連続重複は除去）。"""
+    """深夜(0-5)/朝(6-11)/昼(12-17)/夜(18-23) の代表天気アイコンリストを返す（最大4要素、連続重複は除去）。"""
     hour = day_df["datetime"].dt.hour
     slots = [
+        day_df[hour.between(0, 5)],
         day_df[hour.between(6, 11)],
         day_df[hour.between(12, 17)],
         day_df[hour.between(18, 23)],
@@ -174,9 +178,9 @@ def _card_html(date_obj, max_temp: float, min_temp: float, max_precip_prob: floa
     else:
         precip_html = ""
 
-    arrow = '<span style="font-size:10px; color:#999; margin:0 2px; vertical-align:middle;">▶</span>'
+    arrow = '<span style="font-size:8px; color:#999; margin:0 1px; vertical-align:middle;">▶</span>'
     transition_html = arrow.join(
-        f'<span style="font-size:20px; line-height:1;">{icon}</span>' for icon in icons
+        f'<span style="font-size:16px; line-height:1;">{icon}</span>' for icon in icons
     )
 
     return f"""
