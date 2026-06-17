@@ -12,18 +12,22 @@ from packages.env import settings as _e
 # ストレージパス
 # S3_ML_DATA_BUCKET が設定されていれば s3://{bucket}/01_raw 等を使用。
 # 未設定時はプロジェクトルート配下の data/ をローカルで使用。
-# ディレクトリ名（01_raw / 02_processed / 03_features）はローカル・S3 共通で固定。
-# 特徴量は Feast Offline Store として常にローカル管理。
 # ----------------------------------------------------------------
 _project_root = Path(__file__).parent.parent.parent
 _local_data   = _project_root / "data"
 _s3_bucket    = _e.s3_ml_data_bucket
 
-RAW_DIR       = AnyPath(f"s3://{_s3_bucket}/01_raw")       if _s3_bucket else AnyPath(_local_data / "01_raw")
-PROCESSED_DIR = AnyPath(f"s3://{_s3_bucket}/02_processed") if _s3_bucket else AnyPath(_local_data / "02_processed")
-FEATURE_DIR   = _local_data / "03_features"
-DEPLOYMENT_VERSIONS_PATH  = _project_root / "deployment" / "versions.yaml"
-LGBM_PARAMS_PATH          = _project_root / "deployment" / "lgbm_params.json"
+_data_root    = AnyPath(f"s3://{_s3_bucket}") if _s3_bucket else AnyPath(_local_data)
+RAW_DIR       = _data_root / "01_raw"
+PROCESSED_DIR = _data_root / "02_processed"
+FEATURE_DIR   = _data_root / "03_features"
+EVIDENTLY_DIR = _data_root / "evidently"
+
+# ----------------------------------------------------------------
+# デプロイ設定ファイルパス
+# ----------------------------------------------------------------
+DEPLOYMENT_VERSIONS_PATH = _project_root / "deployment" / "versions.yaml"
+LGBM_PARAMS_PATH         = _project_root / "deployment" / "lgbm_params.json"
 
 # ----------------------------------------------------------------
 # 環境フラグ / 接続情報

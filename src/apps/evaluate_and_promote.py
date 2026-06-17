@@ -19,16 +19,16 @@ import argparse
 import json
 import os
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import mlflow
 import mlflow.pyfunc
 import numpy as np
 import pandas as pd
+from cloudpathlib import AnyPath
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-from packages.config import ERROR_KEY_MAP, MLFLOW_TRACKING_URI, FEATURE_DIR
+from packages.config import ERROR_KEY_MAP, MLFLOW_TRACKING_URI, FEATURE_DIR, EVIDENTLY_DIR
 from packages.logger import AppLogger
 from apps.weather_pyfunc import pipeline_model_name
 
@@ -48,7 +48,7 @@ except ImportError:
 # 設定
 # ============================================================
 
-EVIDENTLY_WS = os.getenv("EVIDENTLY_WORKSPACE", "/evidently/workspace")
+EVIDENTLY_WS = os.getenv("EVIDENTLY_WORKSPACE", str(EVIDENTLY_DIR))
 
 THRESHOLDS: dict[str, float] = {
     "temp_error":      float(os.getenv("EVIDENTLY_MAE_THRESHOLD_TEMP",   "1.5")),
@@ -307,7 +307,7 @@ def run(
     df             = df.sort_values("datetime").reset_index(drop=True)
     logger.info("loaded features", path=str(feat_path), interface=interface_ver, data=data_ver, rows=len(df))
 
-    out_dir    = Path(EVIDENTLY_WS) / location / run_date
+    out_dir    = AnyPath(EVIDENTLY_WS) / location / run_date
     results    = {}
     all_passed = True
 
@@ -373,6 +373,7 @@ def run(
 
 
 if __name__ == "__main__":
+    import sys
     from packages.debug import run_debug_server
     if run_debug_server():
         mlflow.config.enable_async_logging(False)
@@ -380,4 +381,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--location", default="tokyo")
     args = parser.parse_args()
-    run(location=args.location)
+    summary = run(location=args.location)
+    sys.exit(0 if summary["all_passed"] else 1)

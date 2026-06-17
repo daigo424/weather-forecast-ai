@@ -1,0 +1,2 @@
+['remote "golden-dataset"']
+    profile = your-aws-profile

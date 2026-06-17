@@ -1,0 +1,6 @@
+outs:
+- md5: c7680bb494933e7490d7e8da7a345530.dir
+  size: 42496821
+  nfiles: 2192
+  hash: md5
+  path: golden-dataset

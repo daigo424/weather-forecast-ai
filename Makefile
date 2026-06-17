@@ -58,9 +58,9 @@ s3-download-raw:
 	uv run python scripts/s3_sync_raw.py download
 
 # --- ゴールデンデータセット管理 (DVC) ---
-# DVC は .dvc/config の profile で S3 に接続する。
+# DVC の S3 接続設定は .dvc/config.local に記載（.dvc/config.local.example を参照）。
 # AWS_PROFILE は誤操作防止のゲートとして要求する（実際の認証には使わない）。
-# 使用例: AWS_PROFILE=test-weather-forecast-ai make golden-dataset-push
+# 使用例: AWS_PROFILE=your-aws-profile make golden-dataset-push
 
 golden-dataset-push:
 	uv run python scripts/dvc_golden_dataset.py push
