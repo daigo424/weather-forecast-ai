@@ -17,14 +17,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    bucket = os.environ.get("S3_ML_DATA_BUCKET", "")
-    if not bucket:
-        print(
-            "Error: S3_ML_DATA_BUCKET is not set. Set it in .env or pass it inline.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
+    bucket = "weather-forecast-ai-test-ml-data"
     local = "data/01_raw/"
     remote = f"s3://{bucket}/01_raw/"
     profile = os.environ["AWS_PROFILE"]
