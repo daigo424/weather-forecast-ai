@@ -1,0 +1,73 @@
+name: model-quality-check
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  model-quality-check:
+    name: Train & evaluate on golden dataset
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      PYTHONPATH: src
+      MLFLOW_TRACKING_URI: file://${{ github.workspace }}/data/mlruns
+      LGBM_N_JOBS: "2"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      # golden-dataset.dvc の内容（md5ハッシュ）でキャッシュキーを決定する
+      # データが変わらない限り S3 からの再取得をスキップ
+      - name: Cache golden dataset
+        id: cache-golden
+        uses: actions/cache@v4
+        with:
+          path: data/golden-dataset
+          key: golden-dataset-${{ hashFiles('data/golden-dataset.dvc') }}
+
+      - name: Configure AWS credentials (OIDC)
+        if: steps.cache-golden.outputs.cache-hit != 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Pull golden dataset from S3
+        if: steps.cache-golden.outputs.cache-hit != 'true'
+        run: uv run dvc pull data/golden-dataset.dvc
+
+      # golden-dataset は 01_raw と同一形式のためそのまま 01_raw として使用する
+      - name: Link golden dataset as raw data
+        run: ln -s ${{ github.workspace }}/data/golden-dataset ${{ github.workspace }}/data/01_raw
+
+      - name: Process raw data
+        run: |
+          uv run python -m apps.process_actual_all_params
+          uv run python -m apps.process_forecast_all_params
+
+      - name: Train model
+        run: uv run python -m apps.train_pipeline
+
+      - name: Evaluate model
+        run: uv run python -m apps.evaluate_and_promote
+
+      - name: Upload evaluation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-${{ github.sha }}
+          path: data/evidently/
+          if-no-files-found: ignore

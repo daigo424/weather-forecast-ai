@@ -11,6 +11,7 @@ data/mlflow.db
 
 .*/
 !.github/
+!.dvc/
 
 # Virtual environments
 \.venv
@@ -22,7 +23,7 @@ data/mlflow.db
 run_id.txt
 
 # ML Data
-data/
+data/*
 !data/**/.gitkeep
 !data/**/*.dvc
 
