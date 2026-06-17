@@ -146,17 +146,43 @@ jobs:
                 : '(No plan output — an earlier step may have failed)';
 
               const succeeded = outcome === 'success';
-              const noChanges = output.includes('No changes.');
-              const icon = !succeeded ? '❌' : noChanges ? '✅' : '🔄';
-              const summary = !succeeded ? 'Plan failed' : noChanges ? 'No changes' : 'Changes detected';
+
+              const num = (re) => { const m = output.match(re); return m ? parseInt(m[1], 10) : 0; };
+              const toAdd     = num(/(\d+) to add/);
+              const toChange  = num(/(\d+) to change/);
+              const toDestroy = num(/(\d+) to destroy/);
+
+              // "No changes." = explicit, OR Plan line exists with all zeros (state-only moves)
+              const noInfraChanges = output.includes('No changes.')
+                || (output.includes('Plan:') && toAdd === 0 && toChange === 0 && toDestroy === 0);
+
+              const parts = [];
+              if (toAdd > 0)     parts.push(`+${toAdd} to add`);
+              if (toChange > 0)  parts.push(`~${toChange} to change`);
+              if (toDestroy > 0) parts.push(`-${toDestroy} to destroy`);
+
+              let icon, summary;
+              if (!succeeded) {
+                icon = '❌'; summary = 'Plan failed';
+              } else if (noInfraChanges && parts.length === 0) {
+                icon = '✅'; summary = 'No changes';
+              } else if (noInfraChanges) {
+                icon = '✅'; summary = `No changes (${parts.join(', ')})`;
+              } else {
+                icon = '🔄'; summary = parts.length ? parts.join(', ') : 'Changes detected';
+              }
 
               const MAX = 50000;
               const truncated = output.length > MAX ? output.slice(0, MAX) + '\n... (truncated)' : output;
+
+              const planLine = (output.match(/^Plan:.+$/m) || [])[0] || '';
 
               const marker = `<!-- terraform-plan:${target} -->`;
               const body = [
                 marker,
                 `### ${icon} \`${target}\` — ${summary}`,
+                ...(planLine ? ['', `\`${planLine}\``] : []),
+                '',
                 '<details><summary>Show plan output</summary>',
                 '',
                 '```',
@@ -201,10 +227,17 @@ jobs:
             [ -f "$result_file" ] || continue
             target=$(python3 -c "import json; print(json.load(open('${result_file}'))['target'])")
             outcome=$(python3 -c "import json; print(json.load(open('${result_file}'))['outcome'])")
+            plan_summary=$(grep -oE "Plan: [^.]+" "$output_file" 2>/dev/null | head -1 | sed 's/^Plan: //' || true)
+            # "no infra changes" = explicit "No changes." OR plan line with all zeros (state-only moves)
+            no_infra_changes=false
+            grep -q "No changes\." "$output_file" 2>/dev/null && no_infra_changes=true
+            echo "$plan_summary" | grep -qE "^0 to add, 0 to change, 0 to destroy" && no_infra_changes=true
             if [ "$outcome" != "success" ]; then
               echo "| \`${target}\` | ❌ Plan failed |" >> "$GITHUB_STEP_SUMMARY"
-            elif grep -q "No changes." "$output_file" 2>/dev/null; then
+            elif $no_infra_changes; then
               echo "| \`${target}\` | ✅ No changes |" >> "$GITHUB_STEP_SUMMARY"
+            elif [ -n "$plan_summary" ]; then
+              echo "| \`${target}\` | 🔄 ${plan_summary} |" >> "$GITHUB_STEP_SUMMARY"
             else
               echo "| \`${target}\` | 🔄 Changes detected |" >> "$GITHUB_STEP_SUMMARY"
             fi
