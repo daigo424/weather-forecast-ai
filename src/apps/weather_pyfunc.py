@@ -21,11 +21,11 @@ def pipeline_model_name(location: str) -> str:
     return f"weather_forecast_{location}"
 
 # key → (NWP 入力カラム, 出力カラム)
-CORRECTION_TARGETS: dict[str, dict[str, str]] = {
-    "temp":      {"source": "forecast_temperature_2m",  "output": "temperature_2m_tokyo_center"},
-    "precip":    {"source": "forecast_precipitation",   "output": "precipitation_corrected"},
-    "cloud":     {"source": "forecast_cloud_cover",     "output": "cloud_cover_corrected"},
-    "cloud_low": {"source": "forecast_cloud_cover_low", "output": "cloud_cover_low_corrected"},
+CORRECTION_TARGETS: dict[str, dict] = {
+    "temp":      {"source": "forecast_temperature_2m",  "output": "temperature_2m_tokyo_center", "clip": None},
+    "precip":    {"source": "forecast_precipitation",   "output": "precipitation_corrected",      "clip": (0, None)},
+    "cloud":     {"source": "forecast_cloud_cover",     "output": "cloud_cover_corrected",        "clip": (0, 100)},
+    "cloud_low": {"source": "forecast_cloud_cover_low", "output": "cloud_cover_low_corrected",    "clip": (0, 100)},
 }
 
 MODEL_SIGNATURE = ModelSignature(
@@ -142,7 +142,11 @@ class WeatherForecastPyfunc(mlflow.pyfunc.PythonModel):
             for c in feat_cols:
                 if c in feat_df.columns:
                     X[c] = feat_df[c].to_numpy()
-            result[out_col] = raw + self.models[key].predict(X.fillna(0).to_numpy())
+            corrected = raw + self.models[key].predict(X.fillna(0).to_numpy())
+            clip = meta["clip"]
+            if clip is not None:
+                corrected = np.clip(corrected, clip[0], clip[1])
+            result[out_col] = corrected
 
         precip_prob = model_input.get(
             "forecast_precipitation_probability",
