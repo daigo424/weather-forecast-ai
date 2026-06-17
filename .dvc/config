@@ -1,0 +1,4 @@
+[core]
+    remote = golden-dataset
+['remote "golden-dataset"']
+    url = s3://weather-forecast-ai-test-ml-data/golden-dataset
