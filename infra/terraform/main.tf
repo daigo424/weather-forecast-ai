@@ -53,15 +53,3 @@ module "iam_eks" {
   kms_key_arn        = module.ml_data.kms_key_arn
 }
 
-resource "helm_release" "argocd" {
-  count = local.create_compute ? 1 : 0
-
-  name             = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  namespace        = "argocd"
-  create_namespace = true
-  version          = "7.7.22"
-
-  depends_on = [module.eks]
-}
