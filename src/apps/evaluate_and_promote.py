@@ -136,6 +136,38 @@ def _configure_evidently_dashboard(project) -> None:
     )
 
 
+def _push_metrics(results: dict, location: str, all_passed: bool) -> None:
+    pushgateway_url = os.getenv("PUSHGATEWAY_URL")
+    if not pushgateway_url:
+        return
+    try:
+        from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+        registry   = CollectorRegistry()
+        label_keys = ["target", "location"]
+        mae_g      = Gauge("weather_forecast_evaluation_mae",          "Evaluation MAE",      label_keys, registry=registry)
+        rmse_g     = Gauge("weather_forecast_evaluation_rmse",         "Evaluation RMSE",     label_keys, registry=registry)
+        bias_g     = Gauge("weather_forecast_evaluation_bias",         "Evaluation bias",     label_keys, registry=registry)
+        baseline_g = Gauge("weather_forecast_evaluation_baseline_mae", "Baseline MAE",        label_keys, registry=registry)
+        passed_g   = Gauge("weather_forecast_evaluation_passed",       "Evaluation gate 0/1", ["location"], registry=registry)
+
+        for target, result in results.items():
+            if "metrics" not in result:
+                continue
+            short = target.replace("_error", "")
+            m     = result["metrics"]
+            mae_g.labels(target=short,      location=location).set(m["mae"])
+            rmse_g.labels(target=short,     location=location).set(m["rmse"])
+            bias_g.labels(target=short,     location=location).set(m["bias"])
+            baseline_g.labels(target=short, location=location).set(result.get("baseline_mae", 0))
+
+        passed_g.labels(location=location).set(int(all_passed))
+        push_to_gateway(pushgateway_url, job="weather_evaluate", registry=registry,
+                        grouping_key={"location": location})
+        logger.info("metrics pushed to Pushgateway", url=pushgateway_url)
+    except Exception as exc:
+        logger.warning("failed to push metrics to Pushgateway", error=str(exc))
+
+
 def _get_or_create_evidently_project(ws: "EvidentlyWorkspace", name: str):
     for p in ws.list_projects():
         if p.name == name:
@@ -368,6 +400,7 @@ def run(
         if HAS_EVIDENTLY and out_dir.exists():
             mlflow.log_artifacts(str(out_dir), "evidently_reports")
 
+    _push_metrics(results, location, all_passed)
     logger.info("evaluation complete", result="ALL PASS" if all_passed else "SOME FAILED")
     return summary
 

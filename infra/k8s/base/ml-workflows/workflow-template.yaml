@@ -1,0 +1,228 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: weather-pipeline
+  namespace: argo
+spec:
+  entrypoint: dag
+  serviceAccountName: argo-workflows
+  templates:
+    - name: dag
+      dag:
+        tasks:
+          - name: fetch-actual
+            template: fetch-actual
+          - name: fetch-forecast
+            template: fetch-forecast
+          - name: process-actual
+            template: process-actual
+            dependencies:
+              - fetch-actual
+          - name: process-forecast
+            template: process-forecast
+            dependencies:
+              - fetch-forecast
+          - name: train
+            template: train
+            dependencies:
+              - process-actual
+              - process-forecast
+          - name: evaluate
+            template: evaluate
+            dependencies:
+              - train
+          - name: materialize
+            template: materialize
+            dependencies:
+              - evaluate
+
+    - name: fetch-actual
+      container:
+        image: REPLACE_WITH_ECR_WORKFLOW_URL:latest
+        command: ["python", "src/apps/fetch_actual_all_params.py"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: REDIS_HOST
+            value: redis-master.redis.svc.cluster.local
+          - name: S3_ML_DATA_BUCKET
+            valueFrom:
+              configMapKeyRef:
+                name: pipeline-env
+                key: bucket_name
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+      nodeSelector:
+        role: workload
+      tolerations:
+        - key: workload
+          value: "true"
+          effect: NoSchedule
+
+    - name: fetch-forecast
+      container:
+        image: REPLACE_WITH_ECR_WORKFLOW_URL:latest
+        command: ["python", "src/apps/fetch_forecast_all_params.py"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: REDIS_HOST
+            value: redis-master.redis.svc.cluster.local
+          - name: S3_ML_DATA_BUCKET
+            valueFrom:
+              configMapKeyRef:
+                name: pipeline-env
+                key: bucket_name
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+      nodeSelector:
+        role: workload
+      tolerations:
+        - key: workload
+          value: "true"
+          effect: NoSchedule
+
+    - name: process-actual
+      container:
+        image: REPLACE_WITH_ECR_WORKFLOW_URL:latest
+        command: ["python", "src/apps/process_actual_all_params.py"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: REDIS_HOST
+            value: redis-master.redis.svc.cluster.local
+          - name: S3_ML_DATA_BUCKET
+            valueFrom:
+              configMapKeyRef:
+                name: pipeline-env
+                key: bucket_name
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+      nodeSelector:
+        role: workload
+      tolerations:
+        - key: workload
+          value: "true"
+          effect: NoSchedule
+
+    - name: process-forecast
+      container:
+        image: REPLACE_WITH_ECR_WORKFLOW_URL:latest
+        command: ["python", "src/apps/process_forecast_all_params.py"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: REDIS_HOST
+            value: redis-master.redis.svc.cluster.local
+          - name: S3_ML_DATA_BUCKET
+            valueFrom:
+              configMapKeyRef:
+                name: pipeline-env
+                key: bucket_name
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+      nodeSelector:
+        role: workload
+      tolerations:
+        - key: workload
+          value: "true"
+          effect: NoSchedule
+
+    - name: train
+      container:
+        image: REPLACE_WITH_ECR_WORKFLOW_URL:latest
+        command: ["python", "src/apps/train_pipeline.py"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: REDIS_HOST
+            value: redis-master.redis.svc.cluster.local
+          - name: S3_ML_DATA_BUCKET
+            valueFrom:
+              configMapKeyRef:
+                name: pipeline-env
+                key: bucket_name
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 2Gi
+          limits:
+            memory: 4Gi
+      nodeSelector:
+        role: workload
+      tolerations:
+        - key: workload
+          value: "true"
+          effect: NoSchedule
+
+    - name: evaluate
+      container:
+        image: REPLACE_WITH_ECR_WORKFLOW_URL:latest
+        command: ["python", "src/apps/evaluate_and_promote.py"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: REDIS_HOST
+            value: redis-master.redis.svc.cluster.local
+          - name: S3_ML_DATA_BUCKET
+            valueFrom:
+              configMapKeyRef:
+                name: pipeline-env
+                key: bucket_name
+          - name: PUSHGATEWAY_URL
+            value: http://monitoring-prometheus-pushgateway.monitoring.svc.cluster.local:9091
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+      nodeSelector:
+        role: workload
+      tolerations:
+        - key: workload
+          value: "true"
+          effect: NoSchedule
+
+    - name: materialize
+      container:
+        image: REPLACE_WITH_ECR_WORKFLOW_URL:latest
+        command: ["python", "src/apps/materialize_features.py"]
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: REDIS_HOST
+            value: redis-master.redis.svc.cluster.local
+          - name: S3_ML_DATA_BUCKET
+            valueFrom:
+              configMapKeyRef:
+                name: pipeline-env
+                key: bucket_name
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+      nodeSelector:
+        role: workload
+      tolerations:
+        - key: workload
+          value: "true"
+          effect: NoSchedule

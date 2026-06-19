@@ -4,17 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Environment (prod or test)"
+        description: "Environment"
         required: true
         type: choice
-        options: [prod, test]
+        options: [test, prod]
+      compute_enabled:
+        description: "EKS・NAT・IRSA を作成するか (false で削除。RDS・S3 は保持)"
+        required: true
+        type: boolean
+        default: false
 
 env:
   TF_WORKING_DIR: "infra/terraform"   # Change to e.g. "terraform" if .tf files are in a subdirectory
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   apply:
@@ -46,5 +52,73 @@ jobs:
       - name: Terraform apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
-          TF_VAR_environment: ${{ github.event.inputs.environment }}
+          TF_VAR_environment:     ${{ github.event.inputs.environment }}
+          TF_VAR_compute_enabled: ${{ github.event.inputs.compute_enabled }}
         run: terraform apply -input=false -auto-approve
+
+      - name: Fill K8s placeholders from Terraform outputs
+        if: github.event.inputs.compute_enabled == 'true'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
+          BUCKET=$(terraform output -raw ml_data_bucket_name)
+          LBC_ARN=$(terraform output -raw lbc_role_arn)
+          MLFLOW_ARN=$(terraform output -raw mlflow_role_arn)
+          ARGO_ARN=$(terraform output -raw argo_workflows_role_arn)
+          API_ARN=$(terraform output -raw weather_api_role_arn)
+
+          K8S="$GITHUB_WORKSPACE/infra/k8s"
+
+          sed -i "s|REPLACE_WITH_CLUSTER_NAME|$CLUSTER_NAME|g"         "$K8S/apps/${ENV}/aws-lbc.yaml"
+          sed -i "s|REPLACE_WITH_LBC_IRSA_ARN|$LBC_ARN|g"             "$K8S/apps/${ENV}/aws-lbc.yaml"
+          sed -i "s|REPLACE_WITH_MLFLOW_IRSA_ARN|$MLFLOW_ARN|g"       "$K8S/overlays/${ENV}/mlflow/kustomization.yaml"
+          sed -i "s|REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN|$ARGO_ARN|g" "$K8S/overlays/${ENV}/ml-workflows/kustomization.yaml"
+          sed -i "s|REPLACE_WITH_WEATHER_API_IRSA_ARN|$API_ARN|g"     "$K8S/overlays/${ENV}/api/kustomization.yaml"
+          sed -i "s|REPLACE_WITH_BUCKET_NAME|$BUCKET|g"               "$K8S/overlays/${ENV}/ml-workflows/pipeline-env.yaml"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add infra/k8s/
+          git diff --staged --quiet && echo "No placeholder changes" && exit 0
+
+          BRANCH="chore/fill-k8s-placeholders-${ENV}-${GITHUB_SHA::7}"
+          git checkout -b "$BRANCH"
+          git commit -m "chore(${ENV}): fill K8s placeholders from Terraform outputs"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(${ENV}): fill K8s placeholders from Terraform outputs" \
+            --body "terraform-apply により自動生成。クラスター名・IRSA ARN・S3バケット名を埋め込み（環境: ${ENV}）。" \
+            --base main \
+            --head "$BRANCH")
+          gh pr merge "$PR_URL" --squash --delete-branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bootstrap ArgoCD root app
+        if: github.event.inputs.compute_enabled == 'true'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          ARGOCD_GITHUB_PAT: ${{ secrets.ARGOCD_GITHUB_PAT }}
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region ap-northeast-1
+
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: weather-forecast-ai-repo
+            namespace: argocd
+            labels:
+              argocd.argoproj.io/secret-type: repository
+          stringData:
+            type: git
+            url: https://github.com/daigo424/weather-forecast-ai
+            username: x-access-token
+            password: "${ARGOCD_GITHUB_PAT}"
+          EOF
+
+          kubectl apply -f "$GITHUB_WORKSPACE/infra/k8s/bootstrap/root-app-${ENV}.yaml"
