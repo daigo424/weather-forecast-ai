@@ -3,6 +3,10 @@ name: model-quality-check
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "infra/**"
+      - "doc/**"
+      - "notebooks/**"
   workflow_dispatch:
 
 jobs:
