@@ -58,15 +58,15 @@ jobs:
 
       - name: Fill K8s placeholders from Terraform outputs
         if: github.event.inputs.compute_enabled == 'true'
-        working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           ENV="${{ github.event.inputs.environment }}"
-          CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
-          BUCKET=$(terraform output -raw ml_data_bucket_name)
-          LBC_ARN=$(terraform output -raw lbc_role_arn)
-          MLFLOW_ARN=$(terraform output -raw mlflow_role_arn)
-          ARGO_ARN=$(terraform output -raw argo_workflows_role_arn)
-          API_ARN=$(terraform output -raw weather_api_role_arn)
+          TF="$GITHUB_WORKSPACE/${{ env.TF_WORKING_DIR }}"
+          CLUSTER_NAME=$(terraform -chdir="$TF" output -raw eks_cluster_name)
+          BUCKET=$(terraform -chdir="$TF" output -raw ml_data_bucket_name)
+          LBC_ARN=$(terraform -chdir="$TF" output -raw lbc_role_arn)
+          MLFLOW_ARN=$(terraform -chdir="$TF" output -raw mlflow_role_arn)
+          ARGO_ARN=$(terraform -chdir="$TF" output -raw argo_workflows_role_arn)
+          API_ARN=$(terraform -chdir="$TF" output -raw weather_api_role_arn)
 
           K8S="$GITHUB_WORKSPACE/infra/k8s"
 
