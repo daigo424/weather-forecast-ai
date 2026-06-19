@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: weather
+resources:
+  - ../../../base/api
+patches:
+  - patch: |-
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: weather-api
+        annotations:
+          eks.amazonaws.com/role-arn: REPLACE_WITH_WEATHER_API_IRSA_ARN
+    target:
+      kind: ServiceAccount
+      name: weather-api
+images:
+  - name: REPLACE_WITH_ECR_API_URL
+    newName: REPLACE_WITH_ECR_API_URL
+    newTag: latest

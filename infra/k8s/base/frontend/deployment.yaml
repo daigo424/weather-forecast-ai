@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-frontend
+  namespace: weather
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weather-frontend
+  template:
+    metadata:
+      labels:
+        app: weather-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: REPLACE_WITH_ECR_FRONTEND_URL:latest
+          ports:
+            - containerPort: 8501
+          env:
+            - name: API_URL
+              value: http://weather-api.weather.svc.cluster.local
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi

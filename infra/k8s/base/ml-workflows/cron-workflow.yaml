@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: weather-pipeline-cron
+  namespace: argo
+spec:
+  schedule: "0 1 * * *"
+  timezone: Asia/Tokyo
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  workflowSpec:
+    workflowTemplateRef:
+      name: weather-pipeline

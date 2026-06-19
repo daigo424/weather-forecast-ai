@@ -1,0 +1,125 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment"
+        required: true
+        type: choice
+        options: [test, prod]
+      api:
+        description: "Deploy api"
+        type: boolean
+        default: false
+      frontend:
+        description: "Deploy frontend"
+        type: boolean
+        default: false
+      workflow:
+        description: "Deploy ml-workflows"
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve account ID
+        id: account
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            prod) echo "id=${{ vars.PROD_ACCOUNT_ID }}" >> "$GITHUB_OUTPUT" ;;
+            test) echo "id=${{ vars.TEST_ACCOUNT_ID }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsWorkloadDeployRole
+          aws-region: ap-northeast-1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set variables
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          echo "ECR_BASE=${{ steps.account.outputs.id }}.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-${ENV}" >> "$GITHUB_ENV"
+          echo "OVERLAY_DIR=infra/k8s/overlays/${ENV}" >> "$GITHUB_ENV"
+          echo "BRANCH=deploy/${ENV}/image-tags-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Create branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+
+      # --- api ---
+      - name: Build and push api
+        if: github.event.inputs.api == 'true'
+        run: |
+          docker build -f infra/docker/Dockerfile.api -t "$ECR_BASE/api:$TAG" .
+          docker push "$ECR_BASE/api:$TAG"
+
+      - name: Update api image tag
+        if: github.event.inputs.api == 'true'
+        working-directory: ${{ env.OVERLAY_DIR }}/api
+        run: kustomize edit set image REPLACE_WITH_ECR_API_URL="$ECR_BASE/api:$TAG"
+
+      # --- frontend ---
+      - name: Build and push frontend
+        if: github.event.inputs.frontend == 'true'
+        run: |
+          docker build -f infra/docker/Dockerfile.streamlit -t "$ECR_BASE/frontend:$TAG" .
+          docker push "$ECR_BASE/frontend:$TAG"
+
+      - name: Update frontend image tag
+        if: github.event.inputs.frontend == 'true'
+        working-directory: ${{ env.OVERLAY_DIR }}/frontend
+        run: kustomize edit set image REPLACE_WITH_ECR_FRONTEND_URL="$ECR_BASE/frontend:$TAG"
+
+      # --- ml-workflows ---
+      - name: Build and push workflow
+        if: github.event.inputs.workflow == 'true'
+        run: |
+          docker build -f infra/docker/Dockerfile.workflow -t "$ECR_BASE/workflow:$TAG" .
+          docker push "$ECR_BASE/workflow:$TAG"
+
+      - name: Update workflow image tag
+        if: github.event.inputs.workflow == 'true'
+        working-directory: ${{ env.OVERLAY_DIR }}/ml-workflows
+        run: kustomize edit set image REPLACE_WITH_ECR_WORKFLOW_URL="$ECR_BASE/workflow:$TAG"
+
+      # --- PR 作成 & マージ ---
+      - name: Create and merge PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add infra/k8s/overlays/
+          git diff --staged --quiet && echo "No changes to deploy" && exit 0
+
+          git commit -m "chore(${{ github.event.inputs.environment }}): update image tags to $TAG"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "chore(${{ github.event.inputs.environment }}): update image tags to $TAG" \
+            --body "$(printf 'Environment: **%s**\nDeployed by: @%s\nWorkflow run: %s\n\n| Service | Image |\n|---------|-------|\n| api | %s |\n| frontend | %s |\n| workflow | %s |' \
+              '${{ github.event.inputs.environment }}' \
+              '${{ github.actor }}' \
+              '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' \
+              "$ECR_BASE/api:$TAG" \
+              "$ECR_BASE/frontend:$TAG" \
+              "$ECR_BASE/workflow:$TAG")" \
+            --base main \
+            --head "$BRANCH")
+
+          gh pr merge "$PR_URL" --squash --delete-branch
