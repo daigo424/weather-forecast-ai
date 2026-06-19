@@ -26,6 +26,7 @@ dependencies = [
     "apache-airflow>=3.2.1",
     "numpy>=1.26.4",
     "evidently>=0.7.21",
+    "prometheus-client>=0.20.0",
     "pendulum>=3.2.0",
     "dvc>=3.67.1",
     "dvc-s3>=3.3.0",
