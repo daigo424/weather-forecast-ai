@@ -106,6 +106,14 @@ jobs:
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
           aws eks update-kubeconfig --name "$CLUSTER_NAME" --region ap-northeast-1
 
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --create-namespace \
+            --version "7.7.22" \
+            --wait --timeout 5m
+
           kubectl apply -f - <<EOF
           apiVersion: v1
           kind: Secret
