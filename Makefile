@@ -9,7 +9,6 @@ COMPOSE := docker compose -f infra/docker/docker-compose.local.yml
 RUN := $(COMPOSE) run --rm --remove-orphans
 EXEC := $(COMPOSE) exec
 DB_URL := postgresql://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(MLFLOW_DB_NAME)?sslmode=$(DB_SSLMODE)
-AWS_PROFILE_EKS := weather-forecast-ai-test
 
 build:
 	$(COMPOSE) build
@@ -93,3 +92,17 @@ shell-run-%:
 
 db:
 	$(EXEC) db psql "$(DB_URL)"
+
+# --- EKS / ArgoCD ---
+
+kubeconfig:
+	aws eks update-kubeconfig \
+		--name $$(aws eks list-clusters --query 'clusters[0]' --output text) \
+		--region ap-northeast-1
+
+argocd-password:
+	kubectl -n argocd get secret argocd-initial-admin-secret \
+		-o jsonpath="{.data.password}" | base64 -d && echo
+
+argocd-port-forward:
+	kubectl port-forward svc/argocd-server -n argocd 8080:443
