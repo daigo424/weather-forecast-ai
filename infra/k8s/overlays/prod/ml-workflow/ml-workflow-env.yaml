@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pipeline-env
+  name: ml-workflow-env
   namespace: argo
 data:
   bucket_name: REPLACE_WITH_BUCKET_NAME
