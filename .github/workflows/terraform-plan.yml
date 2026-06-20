@@ -1,10 +1,7 @@
 name: terraform-plan
 
 on:
-  pull_request:
-    paths:
-      - "infra/terraform/**"
-      - ".github/workflows/terraform-plan.yml"
+  workflow_call:
   workflow_dispatch:
 
 env:
@@ -24,34 +21,8 @@ jobs:
         environment: [prod, test]
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check for relevant changes
-        id: changes
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          else
-            DIR="${{ env.TF_WORKING_DIR }}"
-            if [ "$DIR" = "." ]; then
-              PATTERN='\.(tf|tfvars)$'
-            else
-              PATTERN="^${DIR}/.*\.(tf|tfvars)$"
-            fi
-            CHANGED="$(git diff --name-only \
-              "${{ github.event.pull_request.base.sha }}" \
-              "${{ github.event.pull_request.head.sha }}" \
-              | grep -E "$PATTERN" || true)"
-            if [ -z "$CHANGED" ]; then
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "skip=false" >> "$GITHUB_OUTPUT"
-            fi
-          fi
 
       - name: Resolve account ID
-        if: steps.changes.outputs.skip != 'true'
         id: account
         run: |
           case "${{ matrix.environment }}" in
@@ -60,33 +31,33 @@ jobs:
           esac
 
       - uses: aws-actions/configure-aws-credentials@v4
-        if: steps.changes.outputs.skip != 'true'
+
         with:
           role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsWorkloadDeployRole
           aws-region: ap-northeast-1
 
       - uses: hashicorp/setup-terraform@v3
-        if: steps.changes.outputs.skip != 'true'
+
 
       - name: Terraform init
-        if: steps.changes.outputs.skip != 'true'
+
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform init -backend-config=backend.hcl \
             -backend-config="key=workloads/${{ vars.WORKLOAD_NAME }}/${{ matrix.environment }}/additional_github_repos/${{ github.repository }}/terraform.tfstate"
 
       - name: Terraform fmt
-        if: steps.changes.outputs.skip != 'true'
+
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
 
       - name: Terraform validate
-        if: steps.changes.outputs.skip != 'true'
+
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
 
       - name: Terraform plan
-        if: steps.changes.outputs.skip != 'true'
+
         id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
@@ -96,7 +67,7 @@ jobs:
           terraform plan -input=false -no-color 2>&1 | tee /tmp/plan_output.txt
 
       - name: Upload plan artifact
-        if: always() && steps.changes.outputs.skip != 'true'
+        if: always()
         run: |
           mkdir -p /tmp/plan_artifact
           TARGET="${{ vars.WORKLOAD_NAME }}:${{ matrix.environment }}"
