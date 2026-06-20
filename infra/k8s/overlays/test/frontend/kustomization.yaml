@@ -2,8 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: weather
 resources:
-  - ../../../base/frontend
+- ../../../base/frontend
 images:
-  - name: REPLACE_WITH_ECR_FRONTEND_URL
-    newName: REPLACE_WITH_ECR_FRONTEND_URL
-    newTag: latest
+- name: REPLACE_WITH_ECR_FRONTEND_URL
+  newName: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-test/frontend
+  newTag: 427cd4e
