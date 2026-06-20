@@ -144,6 +144,7 @@ jobs:
               --namespace argocd \
               --create-namespace \
               --version "7.7.22" \
+              --set configs.params."server\.insecure"=true \
               --wait \
               --timeout 10m || {
               echo "=== ArgoCD pod status ==="
