@@ -100,9 +100,16 @@ jobs:
         run: kustomize edit set image REPLACE_WITH_ECR_WORKFLOW_URL="$ECR_BASE/workflow:$TAG"
 
       # --- PR 作成 & マージ ---
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
       - name: Create and merge PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git add infra/k8s/overlays/
           git diff --staged --quiet && echo "No changes to deploy" && exit 0
