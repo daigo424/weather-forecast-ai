@@ -1,0 +1,60 @@
+name: merge-gate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ${{ github.token }}
+          filters: |
+            src:
+              - 'src/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'data/golden-dataset.dvc'
+            terraform:
+              - 'infra/terraform/**'
+
+  model-quality-check:
+    needs: changes
+    if: needs.changes.outputs.src == 'true'
+    uses: ./.github/workflows/model-quality-check.yml
+    secrets: inherit
+
+  terraform-plan:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    uses: ./.github/workflows/terraform-plan.yml
+    secrets: inherit
+
+  gate:
+    needs: [model-quality-check, terraform-plan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate gates
+        run: |
+          for result in \
+            "${{ needs.model-quality-check.result }}" \
+            "${{ needs.terraform-plan.result }}"; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "Gate failed: $result"
+              exit 1
+            fi
+          done
+          echo "All gates passed"
