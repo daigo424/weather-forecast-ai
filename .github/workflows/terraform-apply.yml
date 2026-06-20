@@ -95,7 +95,7 @@ jobs:
               --head "$BRANCH")
           gh pr merge "$PR_URL" --squash --admin --delete-branch
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_BOT_PAT }}
 
       - name: Bootstrap ArgoCD root app
         if: github.event.inputs.compute_enabled == 'true'
