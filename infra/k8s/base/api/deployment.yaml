@@ -16,7 +16,7 @@ spec:
       serviceAccountName: weather-api
       containers:
         - name: api
-          image: REPLACE_WITH_ECR_API_URL:latest
+          image: REPLACE_WITH_ECR_API_URL
           ports:
             - containerPort: 8000
           env:
