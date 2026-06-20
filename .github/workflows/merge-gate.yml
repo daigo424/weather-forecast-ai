@@ -43,8 +43,8 @@ jobs:
     secrets: inherit
 
   gate:
-    needs: [model-quality-check, terraform-plan]
-    if: always()
+    needs: [changes, model-quality-check, terraform-plan]
+    if: always() && needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Evaluate gates
