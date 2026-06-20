@@ -3,18 +3,18 @@ kind: Kustomization
 namespace: argo
 resources:
   - ../../../base/ml-workflow
-  - pipeline-env.yaml
+  - ml-workflow-env.yaml
 patches:
   - patch: |-
       apiVersion: v1
       kind: ServiceAccount
       metadata:
-        name: argo-workflows
+        name: ml-workflow
         annotations:
           eks.amazonaws.com/role-arn: REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN
     target:
       kind: ServiceAccount
-      name: argo-workflows
+      name: ml-workflow
 images:
   - name: REPLACE_WITH_ECR_WORKFLOW_URL
     newName: REPLACE_WITH_ECR_WORKFLOW_URL

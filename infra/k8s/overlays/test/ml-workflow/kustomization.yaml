@@ -3,18 +3,18 @@ kind: Kustomization
 namespace: argo
 resources:
 - ../../../base/ml-workflow
-- pipeline-env.yaml
+- ml-workflow-env.yaml
 patches:
 - patch: |-
     apiVersion: v1
     kind: ServiceAccount
     metadata:
-      name: argo-workflows
+      name: ml-workflow
       annotations:
-        eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-argo-workflows-role
+        eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-ml-workflow-role
   target:
     kind: ServiceAccount
-    name: argo-workflows
+    name: ml-workflow
 images:
 - name: REPLACE_WITH_ECR_WORKFLOW_URL
   newName: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-test/ml-workflow

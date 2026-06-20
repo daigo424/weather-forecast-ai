@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: argo-workflows-role
+  name: ml-workflow-role
   namespace: argo
 rules:
   - apiGroups: [""]
@@ -14,13 +14,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argo-workflows-rolebinding
+  name: ml-workflow-rolebinding
   namespace: argo
 subjects:
   - kind: ServiceAccount
-    name: argo-workflows
+    name: ml-workflow
     namespace: argo
 roleRef:
   kind: Role
-  name: argo-workflows-role
+  name: ml-workflow-role
   apiGroup: rbac.authorization.k8s.io
