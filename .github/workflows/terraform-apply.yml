@@ -95,13 +95,13 @@ jobs:
               --head "$BRANCH")
           gh pr merge "$PR_URL" --squash --admin --delete-branch
         env:
-          GH_TOKEN: ${{ secrets.GH_BOT_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Bootstrap ArgoCD root app
         if: github.event.inputs.compute_enabled == 'true'
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
-          ARGOCD_GITHUB_PAT: ${{ secrets.ARGOCD_GITHUB_PAT }}
+          ARGOCD_REPO_PASSWORD: ${{ secrets.GH_BOT_PAT }}
         run: |
           ENV="${{ github.event.inputs.environment }}"
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
@@ -127,7 +127,7 @@ jobs:
             type: git
             url: https://github.com/daigo424/weather-forecast-ai
             username: x-access-token
-            password: "${ARGOCD_GITHUB_PAT}"
+            password: "${ARGOCD_REPO_PASSWORD}"
           EOF
 
           kubectl apply -f "$GITHUB_WORKSPACE/infra/k8s/bootstrap/root-app-${ENV}.yaml"
