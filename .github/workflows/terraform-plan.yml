@@ -56,12 +56,22 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
 
+      - name: Resolve compute_enabled
+        id: compute
+        run: |
+          case "${{ matrix.environment }}" in
+            prod) ENABLED="${{ vars.COMPUTE_ENABLED_PROD }}" ;;
+            test) ENABLED="${{ vars.COMPUTE_ENABLED_TEST }}" ;;
+          esac
+          echo "enabled=${ENABLED:-false}" >> "$GITHUB_OUTPUT"
+
       - name: Terraform plan
 
         id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
           TF_VAR_environment: ${{ matrix.environment }}
+          TF_VAR_compute_enabled: ${{ steps.compute.outputs.enabled }}
         run: |
           set -o pipefail
           terraform plan -input=false -no-color 2>&1 | tee /tmp/plan_output.txt
