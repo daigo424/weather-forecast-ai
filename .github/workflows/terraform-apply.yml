@@ -56,6 +56,13 @@ jobs:
           TF_VAR_compute_enabled: ${{ github.event.inputs.compute_enabled }}
         run: terraform apply -input=false -auto-approve
 
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
       - name: Fill K8s placeholders from Terraform outputs
         if: github.event.inputs.compute_enabled == 'true'
         run: |
