@@ -57,21 +57,21 @@ jobs:
           TF_VAR_compute_enabled: ${{ github.event.inputs.compute_enabled }}
         run: terraform apply -input=false -auto-approve
 
-      - name: Record compute state
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ENV="${{ github.event.inputs.environment }}"
-          COMPUTE="${{ github.event.inputs.compute_enabled }}"
-          VAR_NAME="COMPUTE_ENABLED_$(echo "$ENV" | tr '[:lower:]' '[:upper:]')"
-          gh variable set "$VAR_NAME" --body "$COMPUTE"
-
       - name: Generate token
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
+      - name: Record compute state
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          COMPUTE="${{ github.event.inputs.compute_enabled }}"
+          VAR_NAME="COMPUTE_ENABLED_$(echo "$ENV" | tr '[:lower:]' '[:upper:]')"
+          gh variable set "$VAR_NAME" --body "$COMPUTE"
 
       - name: Fill K8s placeholders from Terraform outputs
         if: github.event.inputs.compute_enabled == 'true'
