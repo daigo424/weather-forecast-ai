@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: weather-pipeline
+  name: ml-workflow
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "3"
@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/daigo424/weather-forecast-ai
     targetRevision: main
-    path: infra/k8s/overlays/test/ml-workflows
+    path: infra/k8s/overlays/test/ml-workflow
   destination:
     server: https://kubernetes.default.svc
     namespace: argo
