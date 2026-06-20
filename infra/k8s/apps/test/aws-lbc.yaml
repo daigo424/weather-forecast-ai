@@ -16,7 +16,7 @@ spec:
         - name: clusterName
           value: weather-forecast-ai-test
         - name: vpcId
-          value: REPLACE_WITH_VPC_ID
+          value: vpc-0ee3c074ea354027e
         - name: serviceAccount.annotations.eks\.amazonaws\.com/role-arn
           value: arn:aws:iam::897913033200:role/weather-forecast-ai-test-lbc-role
         - name: serviceAccount.create
