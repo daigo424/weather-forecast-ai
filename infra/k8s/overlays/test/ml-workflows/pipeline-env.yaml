@@ -4,4 +4,4 @@ metadata:
   name: pipeline-env
   namespace: argo
 data:
-  bucket_name: REPLACE_WITH_BUCKET_NAME
+  bucket_name: weather-forecast-ai-test-ml-data
