@@ -28,8 +28,12 @@ output "eks_cluster_endpoint" {
   value = try(module.eks[0].cluster_endpoint, null)
 }
 
+output "eks_developer_role_arn" {
+  value = try(module.eks[0].developer_role_arn, null)
+}
+
 output "kubeconfig_command" {
-  value = try("aws eks update-kubeconfig --name ${module.eks[0].cluster_name} --region ap-northeast-1", null)
+  value = try("aws eks update-kubeconfig --name ${module.eks[0].cluster_name} --region ap-northeast-1 --role-arn ${module.eks[0].developer_role_arn}", null)
 }
 
 # ECR
