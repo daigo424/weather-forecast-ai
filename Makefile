@@ -100,7 +100,6 @@ ENV ?= test
 get-caller-identity:
 	aws sts get-caller-identity
 
-
 check-aws-profile:
 ifndef AWS_PROFILE
 	$(error AWS_PROFILE が未設定です。export AWS_PROFILE=<profile> を実行するか、.env に AWS_PROFILE=<profile> を追記してください)
@@ -109,20 +108,10 @@ endif
 kubeconfig: check-aws-profile
 	aws eks update-kubeconfig --name $(shell aws eks list-clusters --query 'clusters[0]' --output text) --region ap-northeast-1 --role-arn arn:aws:iam::$(shell aws sts get-caller-identity --query Account --output text):role/$(shell aws eks list-clusters --query 'clusters[0]' --output text)-eks-developer
 
-argocd-password:
-	kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | python -c "import sys,base64; print(base64.b64decode(sys.stdin.read().strip()).decode())"
+get-ingress:
+	kubectl get ingress -n weather
 
-argocd-port-forward:
-	kubectl port-forward svc/argocd-server -n argocd 18080:80
-
-# ArgoCD を HTTP モードに切り替える（初回のみ実行）
-argocd-enable-http:
-	kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge -p "{\"data\":{\"server.insecure\":\"true\"}}"
-	kubectl rollout restart deployment/argocd-server -n argocd
-	kubectl rollout status deployment/argocd-server -n argocd --timeout=3m
-
-# aws sso login --profile <profile> を先に実行しておくこと
-argocd-ui: kubeconfig
+argocd-ui: check-aws-profile kubeconfig
 	@echo -----------------------------
 	@echo ArgoCD UI: http://localhost:18080
 	@echo Username:  admin
