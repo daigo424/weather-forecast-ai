@@ -118,7 +118,23 @@ argocd-ui: check-aws-profile kubeconfig
 	kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | python -c "import sys,base64; print('Password:  ' + base64.b64decode(sys.stdin.read().strip()).decode())"
 	@echo -----------------------------
 	@echo Port-forward starting... Ctrl+C to stop
-	kubectl port-forward svc/argocd-server -n argocd 18080:80
+	python scripts/port_forward.py argocd-server argocd 18080:80
+
+monitoring-ui: check-aws-profile kubeconfig
+	@echo -----------------------------
+	@echo Grafana UI: http://localhost:13000
+	@echo Username:  admin
+	@echo Password:  admin
+	@echo -----------------------------
+	@echo Port-forward starting... Ctrl+C to stop
+	python scripts/port_forward.py monitoring-grafana monitoring 13000:80
+
+mlflow-ui: check-aws-profile kubeconfig
+	@echo -----------------------------
+	@echo MLflow UI: http://localhost:15000
+	@echo -----------------------------
+	@echo Port-forward starting... Ctrl+C to stop
+	python scripts/port_forward.py mlflow mlflow 15000:5000
 
 # --- Coding ---
 
