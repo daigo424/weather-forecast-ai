@@ -17,7 +17,7 @@ on:
         type: boolean
         default: false
       workflow:
-        description: "Deploy ml-workflows"
+        description: "Deploy ml-workflow"
         type: boolean
         default: false
 
@@ -87,17 +87,17 @@ jobs:
         working-directory: ${{ env.OVERLAY_DIR }}/frontend
         run: kustomize edit set image REPLACE_WITH_ECR_FRONTEND_URL="$ECR_BASE/frontend:$TAG"
 
-      # --- ml-workflows ---
+      # --- ml-workflow ---
       - name: Build and push workflow
         if: github.event.inputs.workflow == 'true'
         run: |
-          docker build -f infra/docker/Dockerfile.workflow -t "$ECR_BASE/workflow:$TAG" .
-          docker push "$ECR_BASE/workflow:$TAG"
+          docker build -f infra/docker/Dockerfile.ml-workflow -t "$ECR_BASE/ml-workflow:$TAG" .
+          docker push "$ECR_BASE/ml-workflow:$TAG"
 
       - name: Update workflow image tag
         if: github.event.inputs.workflow == 'true'
-        working-directory: ${{ env.OVERLAY_DIR }}/ml-workflows
-        run: kustomize edit set image REPLACE_WITH_ECR_WORKFLOW_URL="$ECR_BASE/workflow:$TAG"
+        working-directory: ${{ env.OVERLAY_DIR }}/ml-workflow
+        run: kustomize edit set image REPLACE_WITH_ECR_WORKFLOW_URL="$ECR_BASE/ml-workflow:$TAG"
 
       # --- PR 作成 & マージ ---
       - name: Generate token
@@ -125,7 +125,7 @@ jobs:
               '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' \
               "$ECR_BASE/api:$TAG" \
               "$ECR_BASE/frontend:$TAG" \
-              "$ECR_BASE/workflow:$TAG")" \
+              "$ECR_BASE/ml-workflow:$TAG")" \
             --base main \
             --head "$BRANCH")
 

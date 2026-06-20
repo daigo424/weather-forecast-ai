@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: CronWorkflow
 metadata:
-  name: weather-pipeline-cron
+  name: ml-workflow-cron
   namespace: argo
 spec:
   schedule: "0 1 * * *"
@@ -11,4 +11,4 @@ spec:
   failedJobsHistoryLimit: 3
   workflowSpec:
     workflowTemplateRef:
-      name: weather-pipeline
+      name: ml-workflow
