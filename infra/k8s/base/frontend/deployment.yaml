@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: REPLACE_WITH_ECR_FRONTEND_URL:latest
+          image: REPLACE_WITH_ECR_FRONTEND_URL
           ports:
             - containerPort: 8501
           env:
