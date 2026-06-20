@@ -19,6 +19,8 @@ spec:
               cpu: 100m
               memory: 256Mi
         server:
+          authModes:
+            - server
           resources:
             requests:
               cpu: 50m
