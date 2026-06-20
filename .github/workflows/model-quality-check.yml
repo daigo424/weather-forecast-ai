@@ -41,7 +41,7 @@ jobs:
         if: steps.cache-golden.outputs.cache-hit != 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::${{ vars.TEST_ACCOUNT_ID }}:role/GitHubActionsWorkloadDeployRole
           aws-region: ap-northeast-1
 
       - name: Pull golden dataset from S3

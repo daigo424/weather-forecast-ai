@@ -169,6 +169,30 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
   depends_on = [aws_eks_access_entry.github_actions]
 }
 
+locals {
+  developer_arns = [for path in var.developer_iam_role_paths : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:${path}"]
+}
+
+resource "aws_eks_access_entry" "developer" {
+  for_each      = toset(local.developer_arns)
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = each.value
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "developer_admin" {
+  for_each      = toset(local.developer_arns)
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = each.value
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.developer]
+}
+
 # -------------------------------------------------------
 # EKS Addons
 # -------------------------------------------------------
