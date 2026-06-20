@@ -17,3 +17,7 @@ output "oidc_provider_arn" {
 output "oidc_provider_url" {
   value = aws_eks_cluster.main.identity[0].oidc[0].issuer
 }
+
+output "developer_role_arn" {
+  value = try(aws_iam_role.eks_developer[0].arn, null)
+}
