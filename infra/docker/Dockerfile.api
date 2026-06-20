@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir \
     'pydantic-settings>=2.0'
 
 COPY src/ ./src/
+COPY deployment/ ./deployment/
 
 ENV PYTHONPATH=/app/src
 
