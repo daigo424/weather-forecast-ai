@@ -92,9 +92,9 @@ jobs:
           sed -i "s|REPLACE_WITH_VPC_ID|$VPC_ID|g"                     "$K8S/apps/${ENV}/aws-lbc.yaml"
           sed -i "s|REPLACE_WITH_LBC_IRSA_ARN|$LBC_ARN|g"             "$K8S/apps/${ENV}/aws-lbc.yaml"
           sed -i "s|REPLACE_WITH_MLFLOW_IRSA_ARN|$MLFLOW_ARN|g"       "$K8S/overlays/${ENV}/mlflow/kustomization.yaml"
-          sed -i "s|REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN|$ARGO_ARN|g" "$K8S/overlays/${ENV}/ml-workflows/kustomization.yaml"
+          sed -i "s|REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN|$ARGO_ARN|g" "$K8S/overlays/${ENV}/ml-workflow/kustomization.yaml"
           sed -i "s|REPLACE_WITH_WEATHER_API_IRSA_ARN|$API_ARN|g"     "$K8S/overlays/${ENV}/api/kustomization.yaml"
-          sed -i "s|REPLACE_WITH_BUCKET_NAME|$BUCKET|g"               "$K8S/overlays/${ENV}/ml-workflows/pipeline-env.yaml"
+          sed -i "s|REPLACE_WITH_BUCKET_NAME|$BUCKET|g"               "$K8S/overlays/${ENV}/ml-workflow/pipeline-env.yaml"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

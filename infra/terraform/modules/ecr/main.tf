@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "repos" {
-  for_each = toset(["api", "workflow", "frontend"])
+  for_each = toset(["api", "ml-workflow", "frontend"])
 
   name                 = "${var.name_prefix}/${each.key}"
   image_tag_mutability = "MUTABLE"
