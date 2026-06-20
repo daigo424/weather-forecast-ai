@@ -19,5 +19,5 @@ output "oidc_provider_url" {
 }
 
 output "developer_role_arn" {
-  value = try(aws_iam_role.eks_developer[0].arn, null)
+  value = aws_iam_role.eks_developer.arn
 }

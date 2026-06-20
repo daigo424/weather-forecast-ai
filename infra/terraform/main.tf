@@ -36,11 +36,10 @@ module "rds" {
 module "eks" {
   count = local.create_compute ? 1 : 0
 
-  source                   = "./modules/eks"
-  name_prefix              = local.name_prefix
-  eks_version              = var.eks_version
-  private_subnet_ids       = module.network[0].private_subnet_ids
-  developer_iam_role_paths = var.developer_iam_role_paths
+  source             = "./modules/eks"
+  name_prefix        = local.name_prefix
+  eks_version        = var.eks_version
+  private_subnet_ids = module.network[0].private_subnet_ids
 }
 
 module "iam_eks" {

@@ -25,9 +25,3 @@ variable "vpc_cidr" {
   type        = string
   description = "既存 VPC の CIDR（network モジュールで VPC 検索に使用）"
 }
-
-variable "developer_iam_role_paths" {
-  type        = list(string)
-  default     = []
-  description = "ローカル開発者の IAM ロールパス（account ID を除いた部分）例: role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_..."
-}
