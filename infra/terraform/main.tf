@@ -23,15 +23,15 @@ module "ecr" {
   name_prefix = local.name_prefix
 }
 
-# module "rds" {
-#   count = local.is_test ? 1 : 0
-#
-#   source             = "./modules/rds"
-#   name_prefix        = local.name_prefix
-#   vpc_id             = module.network[0].vpc_id
-#   vpc_cidr           = module.network[0].vpc_cidr
-#   private_subnet_ids = module.network[0].private_subnet_ids
-# }
+module "rds" {
+  count = local.is_test ? 1 : 0
+
+  source             = "./modules/rds"
+  name_prefix        = local.name_prefix
+  vpc_id             = module.network[0].vpc_id
+  vpc_cidr           = module.network[0].vpc_cidr
+  private_subnet_ids = module.network[0].private_subnet_ids
+}
 
 module "eks" {
   count = local.create_compute ? 1 : 0
