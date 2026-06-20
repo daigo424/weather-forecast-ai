@@ -38,9 +38,9 @@ output "ecr_urls" {
 }
 
 # RDS
-output "rds_endpoint" {
-  value = try(module.rds[0].endpoint, null)
-}
+# output "rds_endpoint" {
+#   value = try(module.rds[0].endpoint, null)
+# }
 
 # IRSA
 output "argo_workflows_role_arn" {
