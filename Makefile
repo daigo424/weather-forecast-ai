@@ -100,8 +100,6 @@ ENV ?= test
 get-caller-identity:
 	aws sts get-caller-identity
 
-get-eks-developer-arn: check-aws-profile
-	@python -c "import subprocess,re; arn=subprocess.check_output(['aws','sts','get-caller-identity','--query','Arn','--output','text']).decode().strip(); m=re.match(r'arn:aws:sts::\d+:assumed-role/(.+?)/.+',arn); role=m.group(1) if m else ''; prefix='aws-reserved/sso.amazonaws.com/' if 'AWSReservedSSO_' in role else ''; path='role/'+prefix+role if m else arn; print('# terraform.tfvars に追記:'); print('developer_iam_role_paths = [\"'+path+'\"]')"
 
 check-aws-profile:
 ifndef AWS_PROFILE

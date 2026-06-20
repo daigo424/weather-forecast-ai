@@ -169,35 +169,30 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
   depends_on = [aws_eks_access_entry.github_actions]
 }
 
-# SSO ロールは /aws-reserved/ パスのため EKS access entry に直接使えない。
-# 専用の eks-developer ロールを経由して EKS アクセスを付与する。
+# SSO ロールは /aws-reserved/ パスのため EKS access entry・IAM trust policy に直接指定不可。
+# アカウント root を信頼し、sts:AssumeRole 権限を持つ IAM エンティティ（SSO 含む）が assume できる。
 resource "aws_iam_role" "eks_developer" {
-  count = length(var.developer_iam_role_paths) > 0 ? 1 : 0
-  name  = "${var.name_prefix}-eks-developer"
+  name = "${var.name_prefix}-eks-developer"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = "sts:AssumeRole"
-      Principal = {
-        AWS = [for path in var.developer_iam_role_paths : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:${path}"]
-      }
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
     }]
   })
 }
 
 resource "aws_eks_access_entry" "developer" {
-  count         = length(var.developer_iam_role_paths) > 0 ? 1 : 0
   cluster_name  = aws_eks_cluster.main.name
-  principal_arn = aws_iam_role.eks_developer[0].arn
+  principal_arn = aws_iam_role.eks_developer.arn
   type          = "STANDARD"
 }
 
 resource "aws_eks_access_policy_association" "developer_admin" {
-  count         = length(var.developer_iam_role_paths) > 0 ? 1 : 0
   cluster_name  = aws_eks_cluster.main.name
-  principal_arn = aws_iam_role.eks_developer[0].arn
+  principal_arn = aws_iam_role.eks_developer.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
   access_scope {
