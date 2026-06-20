@@ -48,11 +48,23 @@ resource "aws_eip" "nat" {
   }
 }
 
+# AWS doesn't immediately release the EIP's internal ENI association after NAT Gateway
+# deletion, causing a race condition. Sleeping 30s on destroy gives AWS time to finish
+# the cleanup before the EIP release is attempted.
+resource "time_sleep" "wait_after_nat_destroy" {
+  count = var.create_nat ? 1 : 0
+
+  depends_on       = [aws_eip.nat]
+  destroy_duration = "30s"
+}
+
 resource "aws_nat_gateway" "main" {
   count = var.create_nat ? 1 : 0
 
   allocation_id = aws_eip.nat[0].id
   subnet_id     = aws_subnet.public[0].id
+
+  depends_on = [time_sleep.wait_after_nat_destroy]
 
   tags = {
     Name = "${var.name_prefix}-nat"
