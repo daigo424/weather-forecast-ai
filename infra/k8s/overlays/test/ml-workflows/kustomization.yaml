@@ -11,7 +11,7 @@ patches:
       metadata:
         name: argo-workflows
         annotations:
-          eks.amazonaws.com/role-arn: REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN
+          eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-argo-workflows-role
     target:
       kind: ServiceAccount
       name: argo-workflows
