@@ -90,7 +90,7 @@ jobs:
           PR_URL=$(gh pr view "$BRANCH" --json url -q .url 2>/dev/null || \
             gh pr create \
               --title "chore(${ENV}): fill K8s placeholders from Terraform outputs" \
-              --body "terraform-apply により自動生成。クラスター名・IRSA ARN・S3バケット名を埋め込み（環境: ${ENV}）。" \
+              --body "terraform-apply により自動生成（環境: ${ENV}）" \
               --base main \
               --head "$BRANCH")
           gh pr merge "$PR_URL" --squash --delete-branch
