@@ -79,6 +79,7 @@ jobs:
           ENV="${{ github.event.inputs.environment }}"
           TF="$GITHUB_WORKSPACE/${{ env.TF_WORKING_DIR }}"
           CLUSTER_NAME=$(terraform -chdir="$TF" output -raw eks_cluster_name)
+          VPC_ID=$(terraform -chdir="$TF" output -raw vpc_id)
           BUCKET=$(terraform -chdir="$TF" output -raw ml_data_bucket_name)
           LBC_ARN=$(terraform -chdir="$TF" output -raw lbc_role_arn)
           MLFLOW_ARN=$(terraform -chdir="$TF" output -raw mlflow_role_arn)
@@ -88,6 +89,7 @@ jobs:
           K8S="$GITHUB_WORKSPACE/infra/k8s"
 
           sed -i "s|REPLACE_WITH_CLUSTER_NAME|$CLUSTER_NAME|g"         "$K8S/apps/${ENV}/aws-lbc.yaml"
+          sed -i "s|REPLACE_WITH_VPC_ID|$VPC_ID|g"                     "$K8S/apps/${ENV}/aws-lbc.yaml"
           sed -i "s|REPLACE_WITH_LBC_IRSA_ARN|$LBC_ARN|g"             "$K8S/apps/${ENV}/aws-lbc.yaml"
           sed -i "s|REPLACE_WITH_MLFLOW_IRSA_ARN|$MLFLOW_ARN|g"       "$K8S/overlays/${ENV}/mlflow/kustomization.yaml"
           sed -i "s|REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN|$ARGO_ARN|g" "$K8S/overlays/${ENV}/ml-workflows/kustomization.yaml"
