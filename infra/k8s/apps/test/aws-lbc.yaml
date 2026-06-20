@@ -14,11 +14,11 @@ spec:
     helm:
       parameters:
         - name: clusterName
-          value: REPLACE_WITH_CLUSTER_NAME
+          value: weather-forecast-ai-test
         - name: vpcId
           value: REPLACE_WITH_VPC_ID
         - name: serviceAccount.annotations.eks\.amazonaws\.com/role-arn
-          value: REPLACE_WITH_LBC_IRSA_ARN
+          value: arn:aws:iam::897913033200:role/weather-forecast-ai-test-lbc-role
         - name: serviceAccount.create
           value: "true"
         - name: serviceAccount.name
