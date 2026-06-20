@@ -129,6 +129,8 @@ jobs:
           helm repo add argo https://argoproj.github.io/argo-helm
           helm repo update
 
+          kubectl wait --for=condition=Available deployment/coredns -n kube-system --timeout=5m
+
           HELM_STATUS=$(helm status argocd -n argocd 2>/dev/null | grep "^STATUS:" | awk '{print $2}')
           if [ "$HELM_STATUS" = "deployed" ]; then
             echo "ArgoCD already deployed, skipping install"
@@ -142,9 +144,16 @@ jobs:
               --namespace argocd \
               --create-namespace \
               --version "7.7.22" \
-              --atomic \
-              --cleanup-on-fail \
-              --timeout 10m
+              --wait \
+              --timeout 10m || {
+              echo "=== ArgoCD pod status ==="
+              kubectl get pods -n argocd -o wide || true
+              echo "=== ArgoCD events ==="
+              kubectl get events -n argocd --sort-by='.lastTimestamp' | tail -30 || true
+              echo "=== Node resource usage ==="
+              kubectl describe nodes | grep -A 10 "Allocated resources" || true
+              exit 1
+            }
           fi
 
           kubectl apply -f - <<EOF
