@@ -5,7 +5,7 @@ metadata:
   namespace: argo
 spec:
   entrypoint: dag
-  serviceAccountName: argo-workflows
+  serviceAccountName: ml-workflow
   templates:
     - name: dag
       dag:
@@ -48,7 +48,7 @@ spec:
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
-                name: pipeline-env
+                name: ml-workflow-env
                 key: bucket_name
         resources:
           requests:
@@ -75,7 +75,7 @@ spec:
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
-                name: pipeline-env
+                name: ml-workflow-env
                 key: bucket_name
         resources:
           requests:
@@ -102,7 +102,7 @@ spec:
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
-                name: pipeline-env
+                name: ml-workflow-env
                 key: bucket_name
         resources:
           requests:
@@ -129,7 +129,7 @@ spec:
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
-                name: pipeline-env
+                name: ml-workflow-env
                 key: bucket_name
         resources:
           requests:
@@ -156,7 +156,7 @@ spec:
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
-                name: pipeline-env
+                name: ml-workflow-env
                 key: bucket_name
         resources:
           requests:
@@ -183,7 +183,7 @@ spec:
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
-                name: pipeline-env
+                name: ml-workflow-env
                 key: bucket_name
           - name: PUSHGATEWAY_URL
             value: http://monitoring-prometheus-pushgateway.monitoring.svc.cluster.local:9091
@@ -212,7 +212,7 @@ spec:
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
-                name: pipeline-env
+                name: ml-workflow-env
                 key: bucket_name
         resources:
           requests:

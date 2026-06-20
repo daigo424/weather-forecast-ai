@@ -94,7 +94,7 @@ jobs:
           sed -i "s|REPLACE_WITH_MLFLOW_IRSA_ARN|$MLFLOW_ARN|g"       "$K8S/overlays/${ENV}/mlflow/kustomization.yaml"
           sed -i "s|REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN|$ARGO_ARN|g" "$K8S/overlays/${ENV}/ml-workflow/kustomization.yaml"
           sed -i "s|REPLACE_WITH_WEATHER_API_IRSA_ARN|$API_ARN|g"     "$K8S/overlays/${ENV}/api/kustomization.yaml"
-          sed -i "s|REPLACE_WITH_BUCKET_NAME|$BUCKET|g"               "$K8S/overlays/${ENV}/ml-workflow/pipeline-env.yaml"
+          sed -i "s|REPLACE_WITH_BUCKET_NAME|$BUCKET|g"               "$K8S/overlays/${ENV}/ml-workflow/ml-workflow-env.yaml"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
