@@ -136,6 +136,13 @@ mlflow-ui: check-aws-profile kubeconfig
 	@echo Port-forward starting... Ctrl+C to stop
 	python scripts/port_forward.py mlflow mlflow 15000:5000
 
+argoworkflow-ui: check-aws-profile kubeconfig
+	@echo -----------------------------
+	@echo Argo Workflows UI: http://localhost:12000
+	@echo -----------------------------
+	@echo Port-forward starting... Ctrl+C to stop
+	python scripts/port_forward.py argo-workflows-server argo 12000:2746
+
 # --- Coding ---
 
 terraform-fmt:
