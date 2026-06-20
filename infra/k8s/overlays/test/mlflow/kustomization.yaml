@@ -10,7 +10,7 @@ patches:
       metadata:
         name: mlflow
         annotations:
-          eks.amazonaws.com/role-arn: REPLACE_WITH_MLFLOW_IRSA_ARN
+          eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-mlflow-role
     target:
       kind: ServiceAccount
       name: mlflow
