@@ -6,4 +6,4 @@ resources:
 images:
 - name: REPLACE_WITH_ECR_FRONTEND_URL
   newName: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-test/frontend
-  newTag: 3f14e60
+  newTag: 5fc820a
