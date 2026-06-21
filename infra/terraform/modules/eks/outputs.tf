@@ -21,3 +21,15 @@ output "oidc_provider_url" {
 output "developer_role_arn" {
   value = aws_iam_role.eks_developer.arn
 }
+
+output "karpenter_role_arn" {
+  value = aws_iam_role.karpenter.arn
+}
+
+output "karpenter_queue_name" {
+  value = aws_sqs_queue.karpenter.name
+}
+
+output "node_role_name" {
+  value = aws_iam_role.node.name
+}

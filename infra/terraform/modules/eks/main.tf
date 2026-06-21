@@ -116,34 +116,318 @@ resource "aws_eks_node_group" "system" {
 }
 
 # -------------------------------------------------------
-# Workload Node Group
+# Karpenter IRSA
 # -------------------------------------------------------
-resource "aws_eks_node_group" "workload" {
-  cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "${var.name_prefix}-workload"
-  node_role_arn   = aws_iam_role.node.arn
-  subnet_ids      = var.private_subnet_ids
+data "aws_iam_policy_document" "karpenter_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
-  capacity_type  = "SPOT"
-  instance_types = ["t3.large", "t3a.large", "m5.large"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
 
-  scaling_config {
-    min_size     = 0
-    desired_size = 0
-    max_size     = 4
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:karpenter"]
+    }
+  }
+}
+
+resource "aws_iam_role" "karpenter" {
+  name               = "${var.name_prefix}-karpenter"
+  assume_role_policy = data.aws_iam_policy_document.karpenter_assume.json
+}
+
+data "aws_iam_policy_document" "karpenter" {
+  statement {
+    sid    = "AllowScopedEC2InstanceActions"
+    effect = "Allow"
+    resources = [
+      "arn:aws:ec2:*::image/*",
+      "arn:aws:ec2:*::snapshot/*",
+      "arn:aws:ec2:*:*:spot-instances-request/*",
+      "arn:aws:ec2:*:*:security-group/*",
+      "arn:aws:ec2:*:*:subnet/*",
+      "arn:aws:ec2:*:*:launch-template/*",
+    ]
+    actions = ["ec2:RunInstances", "ec2:CreateFleet"]
   }
 
-  taint {
-    key    = "workload"
-    value  = "true"
-    effect = "NO_SCHEDULE"
+  statement {
+    sid    = "AllowScopedEC2InstanceActionsWithTags"
+    effect = "Allow"
+    resources = [
+      "arn:aws:ec2:*:*:fleet/*",
+      "arn:aws:ec2:*:*:instance/*",
+      "arn:aws:ec2:*:*:volume/*",
+      "arn:aws:ec2:*:*:network-interface/*",
+      "arn:aws:ec2:*:*:launch-template/*",
+      "arn:aws:ec2:*:*:spot-instances-request/*",
+    ]
+    actions = ["ec2:RunInstances", "ec2:CreateFleet", "ec2:CreateLaunchTemplate"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes.io/cluster/${aws_eks_cluster.main.name}"
+      values   = ["owned"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "aws:RequestTag/karpenter.sh/nodepool"
+      values   = ["*"]
+    }
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.node_worker_policy,
-    aws_iam_role_policy_attachment.node_cni_policy,
-    aws_iam_role_policy_attachment.node_ecr_policy,
-  ]
+  statement {
+    sid    = "AllowScopedResourceCreationTagging"
+    effect = "Allow"
+    resources = [
+      "arn:aws:ec2:*:*:fleet/*",
+      "arn:aws:ec2:*:*:instance/*",
+      "arn:aws:ec2:*:*:volume/*",
+      "arn:aws:ec2:*:*:network-interface/*",
+      "arn:aws:ec2:*:*:launch-template/*",
+      "arn:aws:ec2:*:*:spot-instances-request/*",
+    ]
+    actions = ["ec2:CreateTags"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "ec2:CreateAction"
+      values   = ["RunInstances", "CreateFleet", "CreateLaunchTemplate"]
+    }
+  }
+
+  statement {
+    sid    = "AllowScopedDeletion"
+    effect = "Allow"
+    resources = [
+      "arn:aws:ec2:*:*:instance/*",
+      "arn:aws:ec2:*:*:launch-template/*",
+    ]
+    actions = ["ec2:TerminateInstances", "ec2:DeleteLaunchTemplate"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/kubernetes.io/cluster/${aws_eks_cluster.main.name}"
+      values   = ["owned"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/karpenter.sh/nodepool"
+      values   = ["*"]
+    }
+  }
+
+  statement {
+    sid       = "AllowRegionalReadActions"
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "ec2:DescribeAvailabilityZones",
+      "ec2:DescribeImages",
+      "ec2:DescribeInstances",
+      "ec2:DescribeInstanceTypeOfferings",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeLaunchTemplates",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeSpotPriceHistory",
+      "ec2:DescribeSubnets",
+    ]
+  }
+
+  statement {
+    sid       = "AllowSSMReadActions"
+    effect    = "Allow"
+    resources = ["arn:aws:ssm:*::parameter/aws/service/*"]
+    actions   = ["ssm:GetParameter"]
+  }
+
+  statement {
+    sid       = "AllowPricingReadActions"
+    effect    = "Allow"
+    resources = ["*"]
+    actions   = ["pricing:GetProducts"]
+  }
+
+  statement {
+    sid       = "AllowInterruptionQueueActions"
+    effect    = "Allow"
+    resources = [aws_sqs_queue.karpenter.arn]
+    actions = [
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+      "sqs:ReceiveMessage",
+    ]
+  }
+
+  statement {
+    sid       = "AllowPassingInstanceRole"
+    effect    = "Allow"
+    resources = [aws_iam_role.node.arn]
+    actions   = ["iam:PassRole"]
+  }
+
+  statement {
+    sid       = "AllowScopedInstanceProfileCreation"
+    effect    = "Allow"
+    resources = ["*"]
+    actions   = ["iam:CreateInstanceProfile"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/kubernetes.io/cluster/${aws_eks_cluster.main.name}"
+      values   = ["owned"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "aws:RequestTag/karpenter.k8s.aws/ec2nodeclass"
+      values   = ["*"]
+    }
+  }
+
+  statement {
+    sid       = "AllowScopedInstanceProfileTagActions"
+    effect    = "Allow"
+    resources = ["*"]
+    actions   = ["iam:TagInstanceProfile"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/kubernetes.io/cluster/${aws_eks_cluster.main.name}"
+      values   = ["owned"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass"
+      values   = ["*"]
+    }
+  }
+
+  statement {
+    sid       = "AllowScopedInstanceProfileActions"
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "iam:AddRoleToInstanceProfile",
+      "iam:RemoveRoleFromInstanceProfile",
+      "iam:DeleteInstanceProfile",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/kubernetes.io/cluster/${aws_eks_cluster.main.name}"
+      values   = ["owned"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass"
+      values   = ["*"]
+    }
+  }
+
+  statement {
+    sid       = "AllowInstanceProfileReadActions"
+    effect    = "Allow"
+    resources = ["*"]
+    actions   = ["iam:GetInstanceProfile"]
+  }
+
+  statement {
+    sid       = "AllowAPIServerEndpointDiscovery"
+    effect    = "Allow"
+    resources = [aws_eks_cluster.main.arn]
+    actions   = ["eks:DescribeCluster"]
+  }
+}
+
+resource "aws_iam_policy" "karpenter" {
+  name   = "${var.name_prefix}-karpenter"
+  policy = data.aws_iam_policy_document.karpenter.json
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter" {
+  role       = aws_iam_role.karpenter.name
+  policy_arn = aws_iam_policy.karpenter.arn
+}
+
+# Karpenter が起動したノードをクラスターに参加させるためのアクセスエントリー
+resource "aws_eks_access_entry" "karpenter_node" {
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = aws_iam_role.node.arn
+  type          = "EC2_LINUX"
+}
+
+# Karpenter がサブネット・SGを検出するためのタグ
+resource "aws_ec2_tag" "karpenter_cluster_sg" {
+  resource_id = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = aws_eks_cluster.main.name
+}
+
+# -------------------------------------------------------
+# SQS + EventBridge for Karpenter SPOT interruption handling
+# -------------------------------------------------------
+resource "aws_sqs_queue" "karpenter" {
+  name                      = "${var.name_prefix}-karpenter"
+  message_retention_seconds = 300
+  sqs_managed_sse_enabled   = true
+}
+
+resource "aws_sqs_queue_policy" "karpenter" {
+  queue_url = aws_sqs_queue.karpenter.url
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = ["events.amazonaws.com", "sqs.amazonaws.com"] }
+      Action    = "sqs:SendMessage"
+      Resource  = aws_sqs_queue.karpenter.arn
+    }]
+  })
+}
+
+locals {
+  karpenter_event_rules = {
+    spot_interruption = {
+      name          = "${var.name_prefix}-karpenter-spot"
+      event_pattern = jsonencode({ source = ["aws.ec2"], "detail-type" = ["EC2 Spot Instance Interruption Warning"] })
+    }
+    rebalance = {
+      name          = "${var.name_prefix}-karpenter-rebalance"
+      event_pattern = jsonencode({ source = ["aws.ec2"], "detail-type" = ["EC2 Instance Rebalance Recommendation"] })
+    }
+    instance_state = {
+      name          = "${var.name_prefix}-karpenter-instance-state"
+      event_pattern = jsonencode({ source = ["aws.ec2"], "detail-type" = ["EC2 Instance State-change Notification"] })
+    }
+    scheduled_change = {
+      name          = "${var.name_prefix}-karpenter-scheduled-change"
+      event_pattern = jsonencode({ source = ["aws.health"], "detail-type" = ["AWS Health Event"] })
+    }
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "karpenter" {
+  for_each      = local.karpenter_event_rules
+  name          = each.value.name
+  event_pattern = each.value.event_pattern
+}
+
+resource "aws_cloudwatch_event_target" "karpenter" {
+  for_each = local.karpenter_event_rules
+  rule     = aws_cloudwatch_event_rule.karpenter[each.key].name
+  arn      = aws_sqs_queue.karpenter.arn
 }
 
 # -------------------------------------------------------
