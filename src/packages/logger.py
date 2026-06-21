@@ -6,6 +6,23 @@ import os
 import sys
 from typing import Any
 
+_NOISY_LOGGERS = [
+    "mlflow",
+    "feast",
+    "lightgbm",
+    "xgboost",
+    "sklearn",
+    "boto3",
+    "botocore",
+    "s3transfer",
+    "urllib3",
+    "httpx",
+    "httpcore",
+    "optuna",
+]
+
+_root_json_configured = False
+
 
 class LogJsonFormatter(logging.Formatter):
     """JSON フォーマッター。構造化フィールド（fields）をトップレベルキーに展開して出力する。"""
@@ -38,6 +55,23 @@ class LogTextFormatter(logging.Formatter):
         return base
 
 
+def _configure_root_logger_json(formatter: LogJsonFormatter) -> None:
+    """ルートロガーに JSON フォーマッターを設定し、サードパーティログも JSON で出力する。
+    WARNING 以上のみ通す。LightGBM など print() 直接出力はこの仕組みでは捕捉できない。
+    """
+    global _root_json_configured
+    if _root_json_configured:
+        return
+    root = logging.getLogger()
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+    root.setLevel(logging.WARNING)
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+    _root_json_configured = True
+
+
 class AppLogger:
     """アプリケーション全体で共有するカスタムロガークラス"""
 
@@ -56,7 +90,11 @@ class AppLogger:
         handler = logging.StreamHandler(sys.stdout)
 
         if log_format == "json":
-            handler.setFormatter(LogJsonFormatter())
+            formatter = LogJsonFormatter()
+            handler.setFormatter(formatter)
+            # ルートロガーへの伝播を止めて二重出力を防ぐ
+            self.logger.propagate = False
+            _configure_root_logger_json(formatter)
         else:
             handler.setFormatter(LogTextFormatter(
                 "[%(asctime)s] [%(levelname)s] (%(module)s:%(lineno)d): %(message)s",
