@@ -13,3 +13,11 @@ output "kms_key_arn" {
 output "github_actions_role_arn" {
   value = aws_iam_role.github_actions_role.arn
 }
+
+output "athena_workgroup_name" {
+  value = aws_athena_workgroup.logs.name
+}
+
+output "glue_database_name" {
+  value = aws_glue_catalog_database.logs.name
+}

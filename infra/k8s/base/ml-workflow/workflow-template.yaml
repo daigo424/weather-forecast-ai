@@ -50,6 +50,8 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: LOG_FORMAT
+            value: json
         resources:
           requests:
             cpu: 200m
@@ -79,6 +81,8 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: LOG_FORMAT
+            value: json
         resources:
           requests:
             cpu: 200m
@@ -108,6 +112,8 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: LOG_FORMAT
+            value: json
         resources:
           requests:
             cpu: 200m
@@ -137,6 +143,8 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: LOG_FORMAT
+            value: json
         resources:
           requests:
             cpu: 200m
@@ -166,6 +174,8 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: LOG_FORMAT
+            value: json
         resources:
           requests:
             cpu: 1000m
@@ -197,6 +207,8 @@ spec:
                 key: bucket_name
           - name: PUSHGATEWAY_URL
             value: http://monitoring-prometheus-pushgateway.monitoring.svc.cluster.local:9091
+          - name: LOG_FORMAT
+            value: json
         resources:
           requests:
             cpu: 200m
@@ -226,6 +238,8 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: LOG_FORMAT
+            value: json
         resources:
           requests:
             cpu: 200m
