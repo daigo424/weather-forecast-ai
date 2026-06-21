@@ -18,6 +18,9 @@ spec:
             requests:
               cpu: 100m
               memory: 256Mi
+          workflowDefaults:
+            spec:
+              archiveLogs: true
         server:
           authModes:
             - server
@@ -25,10 +28,22 @@ spec:
             requests:
               cpu: 50m
               memory: 128Mi
+          serviceAccount:
+            annotations:
+              eks.amazonaws.com/role-arn: REPLACE_WITH_ARGO_WORKFLOWS_SERVER_IRSA_ARN
         workflow:
           serviceAccount:
             create: true
             name: argo-workflows
+        useDefaultArtifactRepo: true
+        artifactRepository:
+          s3:
+            bucket: weather-forecast-ai-test-ml-data
+            endpoint: s3.amazonaws.com
+            region: ap-northeast-1
+            useSDKCreds: true
+            insecure: false
+            keyFormat: "logs/argo-workflows/{{workflow.name}}/{{pod.name}}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argo
