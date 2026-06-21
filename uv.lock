@@ -1381,6 +1381,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/95/e6b457dc45581460478b94133b429d42de7a61a2d7e3f7d99496e11d768e/feast-0.47.0-py2.py3-none-any.whl", hash = "sha256:600ca26e3b756a69be0dfa9f61c9c80458b78187a9f34f26410da4d2e93d05b4", size = 5482486, upload-time = "2025-03-11T01:28:33.573Z" },
 ]
 
+[package.optional-dependencies]
+redis = [
+    { name = "hiredis" },
+    { name = "redis" },
+]
+
 [[package]]
 name = "filelock"
 version = "3.29.0"
@@ -1717,6 +1723,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
 ]
+
+[[package]]
+name = "hiredis"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bc/bd/e1ba6b92634fd0a25d583a0f988c6fae6767adce46756763ada694defd1b/hiredis-2.4.0.tar.gz", hash = "sha256:90d7af678056c7889d86821344d79fec3932a6a1480ebba3d644cb29a3135348", size = 87599, upload-time = "2024-07-19T11:53:39.12Z" }
 
 [[package]]
 name = "httpcore"
@@ -3567,6 +3579,15 @@ wheels = [
 ]
 
 [[package]]
+name = "redis"
+version = "4.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/88/63d802c2b18dd9eaa5b846cbf18917c6b2882f20efda398cc16a7500b02c/redis-4.6.0.tar.gz", hash = "sha256:585dc516b9eb042a619ef0a39c3d7d55fe81bdb4df09a52c9cdde0d07bf1aa7d", size = 4561721, upload-time = "2023-06-25T13:13:57.139Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/2e/409703d645363352a20c944f5d119bdae3eb3034051a53724a7c5fee12b8/redis-4.6.0-py3-none-any.whl", hash = "sha256:e2b03db868160ee4591de3cb90d40ebb50a90dd302138775937f6a42b7ed183c", size = 241149, upload-time = "2023-06-25T13:13:54.563Z" },
+]
+
+[[package]]
 name = "referencing"
 version = "0.37.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4531,74 +4552,88 @@ name = "weather-forecast-ai"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "alembic" },
-    { name = "apache-airflow" },
     { name = "boto3" },
     { name = "cloudpathlib", extra = ["s3"] },
-    { name = "dvc" },
-    { name = "dvc-s3" },
     { name = "evidently" },
-    { name = "feast" },
-    { name = "ipykernel" },
+    { name = "fastapi" },
+    { name = "feast", extra = ["redis"] },
     { name = "lightgbm" },
-    { name = "matplotlib" },
     { name = "mlflow" },
     { name = "numpy" },
     { name = "optuna" },
     { name = "pandas" },
-    { name = "pandas-stubs" },
-    { name = "pendulum" },
-    { name = "plotly" },
+    { name = "prometheus-client" },
     { name = "psycopg2-binary" },
-    { name = "pytest" },
+    { name = "pyarrow" },
+    { name = "pydantic-settings" },
+    { name = "requests" },
     { name = "s3fs" },
     { name = "scikit-learn" },
-    { name = "scipy-stubs" },
-    { name = "sqlalchemy" },
-    { name = "streamlit" },
+    { name = "setuptools" },
+    { name = "uvicorn", extra = ["standard"] },
     { name = "xgboost" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "alembic" },
+    { name = "apache-airflow" },
+    { name = "dvc" },
+    { name = "dvc-s3" },
+    { name = "ipykernel" },
     { name = "ipywidgets" },
+    { name = "matplotlib" },
+    { name = "pandas-stubs" },
+    { name = "pendulum" },
+    { name = "plotly" },
     { name = "pydevd-pycharm" },
+    { name = "pytest" },
+    { name = "scipy-stubs" },
+    { name = "sqlalchemy" },
+    { name = "streamlit" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "alembic", specifier = ">=1.13" },
-    { name = "apache-airflow", specifier = ">=3.2.1" },
     { name = "boto3", specifier = ">=1.34.0" },
     { name = "cloudpathlib", extras = ["s3"], specifier = ">=0.18.0" },
-    { name = "dvc", specifier = ">=3.67.1" },
-    { name = "dvc-s3", specifier = ">=3.3.0" },
     { name = "evidently", specifier = ">=0.7.21" },
-    { name = "feast", specifier = ">=0.47.0" },
-    { name = "ipykernel", specifier = ">=7.2.0" },
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "feast", extras = ["redis"], specifier = ">=0.47.0" },
     { name = "lightgbm", specifier = ">=4.6.0" },
-    { name = "matplotlib", specifier = ">=3.10.9" },
-    { name = "mlflow", specifier = ">=2.9" },
+    { name = "mlflow", specifier = "==3.11.1" },
     { name = "numpy", specifier = ">=1.26.4" },
     { name = "optuna", specifier = ">=3.6.0" },
     { name = "pandas", specifier = "==2.2.3" },
-    { name = "pandas-stubs", specifier = "~=2.2.3" },
-    { name = "pendulum", specifier = ">=3.2.0" },
-    { name = "plotly", specifier = ">=5.22.0" },
+    { name = "prometheus-client", specifier = ">=0.20.0" },
     { name = "psycopg2-binary", specifier = ">=2.9" },
-    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pyarrow", specifier = ">=15.0" },
+    { name = "pydantic-settings", specifier = ">=2.0.0" },
+    { name = "requests", specifier = ">=2.31.0" },
     { name = "s3fs", specifier = ">=2024.1.0" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
-    { name = "scipy-stubs", specifier = "~=1.17.1" },
-    { name = "sqlalchemy", specifier = ">=2.0" },
-    { name = "streamlit", specifier = ">=1.35.0" },
+    { name = "setuptools" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
     { name = "xgboost", specifier = ">=3.2.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "alembic", specifier = ">=1.13" },
+    { name = "apache-airflow", specifier = ">=3.2.1" },
+    { name = "dvc", specifier = ">=3.67.1" },
+    { name = "dvc-s3", specifier = ">=3.3.0" },
+    { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "ipywidgets", specifier = ">=8.0.0" },
+    { name = "matplotlib", specifier = ">=3.10.9" },
+    { name = "pandas-stubs", specifier = "~=2.2.3" },
+    { name = "pendulum", specifier = ">=3.2.0" },
+    { name = "plotly", specifier = ">=5.22.0" },
     { name = "pydevd-pycharm", specifier = ">=262.6228.39" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "scipy-stubs", specifier = "~=1.17.1" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "streamlit", specifier = ">=1.35.0" },
 ]
 
 [[package]]
