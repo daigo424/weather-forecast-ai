@@ -62,6 +62,8 @@ spec:
         - key: workload
           value: "true"
           effect: NoSchedule
+        - key: karpenter.sh/unregistered
+          effect: NoSchedule
 
     - name: fetch-forecast
       container:
@@ -88,6 +90,8 @@ spec:
       tolerations:
         - key: workload
           value: "true"
+          effect: NoSchedule
+        - key: karpenter.sh/unregistered
           effect: NoSchedule
 
     - name: process-actual
@@ -116,6 +120,8 @@ spec:
         - key: workload
           value: "true"
           effect: NoSchedule
+        - key: karpenter.sh/unregistered
+          effect: NoSchedule
 
     - name: process-forecast
       container:
@@ -143,6 +149,8 @@ spec:
         - key: workload
           value: "true"
           effect: NoSchedule
+        - key: karpenter.sh/unregistered
+          effect: NoSchedule
 
     - name: train
       container:
@@ -169,6 +177,8 @@ spec:
       tolerations:
         - key: workload
           value: "true"
+          effect: NoSchedule
+        - key: karpenter.sh/unregistered
           effect: NoSchedule
 
     - name: evaluate
@@ -199,6 +209,8 @@ spec:
         - key: workload
           value: "true"
           effect: NoSchedule
+        - key: karpenter.sh/unregistered
+          effect: NoSchedule
 
     - name: materialize
       container:
@@ -225,4 +237,6 @@ spec:
       tolerations:
         - key: workload
           value: "true"
+          effect: NoSchedule
+        - key: karpenter.sh/unregistered
           effect: NoSchedule
