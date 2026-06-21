@@ -13,3 +13,7 @@ output "lbc_role_arn" {
 output "weather_api_role_arn" {
   value = aws_iam_role.weather_api.arn
 }
+
+output "argo_workflows_server_role_arn" {
+  value = aws_iam_role.argo_workflows_server.arn
+}

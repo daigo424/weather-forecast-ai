@@ -96,6 +96,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "ml_data" {
       }
     }
   }
+
+  rule {
+    id     = "argo-workflows-logs-lifecycle"
+    status = "Enabled"
+
+    filter {
+      prefix = "logs/argo-workflows/"
+    }
+
+    expiration {
+      days = 30
+    }
+  }
 }
 
 # S3 bucket dedicated to storing access logs
