@@ -84,6 +84,7 @@ jobs:
           LBC_ARN=$(terraform -chdir="$TF" output -raw lbc_role_arn)
           MLFLOW_ARN=$(terraform -chdir="$TF" output -raw mlflow_role_arn)
           ARGO_ARN=$(terraform -chdir="$TF" output -raw ml_workflow_role_arn)
+          ARGO_WORKFLOWS_SERVER_ARN=$(terraform -chdir="$TF" output -raw argo_workflows_server_role_arn)
           API_ARN=$(terraform -chdir="$TF" output -raw weather_api_role_arn)
 
           K8S="$GITHUB_WORKSPACE/infra/k8s"
@@ -93,6 +94,7 @@ jobs:
           sed -i "s|REPLACE_WITH_LBC_IRSA_ARN|$LBC_ARN|g"             "$K8S/apps/${ENV}/aws-lbc.yaml"
           sed -i "s|REPLACE_WITH_MLFLOW_IRSA_ARN|$MLFLOW_ARN|g"       "$K8S/overlays/${ENV}/mlflow/kustomization.yaml"
           sed -i "s|REPLACE_WITH_ARGO_WORKFLOWS_IRSA_ARN|$ARGO_ARN|g" "$K8S/overlays/${ENV}/ml-workflow/kustomization.yaml"
+          sed -i "s|REPLACE_WITH_ARGO_WORKFLOWS_SERVER_IRSA_ARN|$ARGO_WORKFLOWS_SERVER_ARN|g" "$K8S/apps/${ENV}/argo-workflows.yaml"
           sed -i "s|REPLACE_WITH_WEATHER_API_IRSA_ARN|$API_ARN|g"     "$K8S/overlays/${ENV}/api/kustomization.yaml"
           sed -i "s|REPLACE_WITH_BUCKET_NAME|$BUCKET|g"               "$K8S/overlays/${ENV}/ml-workflow/ml-workflow-env.yaml"
 
