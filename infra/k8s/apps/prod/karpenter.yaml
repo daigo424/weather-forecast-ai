@@ -19,6 +19,7 @@ spec:
         serviceAccount:
           annotations:
             eks.amazonaws.com/role-arn: REPLACE_WITH_KARPENTER_ROLE_ARN
+        replicas: 1
         controller:
           resources:
             requests:
