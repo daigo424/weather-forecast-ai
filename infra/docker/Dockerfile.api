@@ -6,20 +6,8 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir \
-    'mlflow==3.11.1' \
-    'scikit-learn>=1.8.0' \
-    'lightgbm>=4.0' \
-    'fastapi>=0.115.0' \
-    'uvicorn[standard]>=0.34.0' \
-    'requests>=2.31.0' \
-    'pandas>=2.2.0' \
-    'numpy>=1.26.0' \
-    'pyarrow>=15.0' \
-    'feast[redis]>=0.40.0' \
-    'psycopg2-binary' \
-    'cloudpathlib>=0.16.0' \
-    'pydantic-settings>=2.0'
+COPY pyproject.toml .
+RUN pip install --no-cache-dir uv && uv pip install --system --no-cache .
 
 COPY src/ ./src/
 COPY deployment/ ./deployment/
