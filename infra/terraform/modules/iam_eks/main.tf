@@ -3,9 +3,9 @@ locals {
 }
 
 # -------------------------------------------------------
-# 1. Argo Workflows IRSA
+# 1. ML Workflow IRSA
 # -------------------------------------------------------
-data "aws_iam_policy_document" "argo_workflows_assume" {
+data "aws_iam_policy_document" "ml_workflow_assume" {
   statement {
     effect  = "Allow"
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -24,17 +24,17 @@ data "aws_iam_policy_document" "argo_workflows_assume" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_provider}:sub"
-      values   = ["system:serviceaccount:argo:argo-workflows"]
+      values   = ["system:serviceaccount:argo:ml-workflow"]
     }
   }
 }
 
-resource "aws_iam_role" "argo_workflows" {
-  name               = "${var.name_prefix}-argo-workflows-role"
-  assume_role_policy = data.aws_iam_policy_document.argo_workflows_assume.json
+resource "aws_iam_role" "ml_workflow" {
+  name               = "${var.name_prefix}-ml-workflow-role"
+  assume_role_policy = data.aws_iam_policy_document.ml_workflow_assume.json
 }
 
-data "aws_iam_policy_document" "argo_workflows_policy" {
+data "aws_iam_policy_document" "ml_workflow_policy" {
   statement {
     effect = "Allow"
     actions = [
@@ -59,10 +59,10 @@ data "aws_iam_policy_document" "argo_workflows_policy" {
   }
 }
 
-resource "aws_iam_role_policy" "argo_workflows" {
-  name   = "${var.name_prefix}-argo-workflows-policy"
-  role   = aws_iam_role.argo_workflows.id
-  policy = data.aws_iam_policy_document.argo_workflows_policy.json
+resource "aws_iam_role_policy" "ml_workflow" {
+  name   = "${var.name_prefix}-ml-workflow-policy"
+  role   = aws_iam_role.ml_workflow.id
+  policy = data.aws_iam_policy_document.ml_workflow_policy.json
 }
 
 # -------------------------------------------------------
