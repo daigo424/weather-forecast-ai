@@ -30,7 +30,7 @@ spec:
               memory: 128Mi
           serviceAccount:
             annotations:
-              eks.amazonaws.com/role-arn: REPLACE_WITH_ARGO_WORKFLOWS_SERVER_IRSA_ARN
+              eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-argo-workflows-server-role
         workflow:
           serviceAccount:
             create: true
