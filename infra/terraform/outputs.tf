@@ -51,6 +51,18 @@ output "rds_db_name" {
 }
 
 # IRSA
+output "karpenter_role_arn" {
+  value = try(module.eks[0].karpenter_role_arn, null)
+}
+
+output "karpenter_queue_name" {
+  value = try(module.eks[0].karpenter_queue_name, null)
+}
+
+output "node_role_name" {
+  value = try(module.eks[0].node_role_name, null)
+}
+
 output "argo_workflows_role_arn" {
   value = try(module.iam_eks[0].argo_workflows_role_arn, null)
 }
