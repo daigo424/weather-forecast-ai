@@ -13,6 +13,8 @@ spec:
     targetRevision: "20.13.4"
     helm:
       valuesObject:
+        global:
+          storageClass: gp2
         architecture: standalone
         auth:
           enabled: false
