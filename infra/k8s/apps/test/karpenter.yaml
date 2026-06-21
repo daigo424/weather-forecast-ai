@@ -19,6 +19,7 @@ spec:
         serviceAccount:
           annotations:
             eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-karpenter
+        replicas: 1
         controller:
           resources:
             requests:
