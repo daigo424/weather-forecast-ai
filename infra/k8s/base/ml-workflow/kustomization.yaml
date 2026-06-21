@@ -5,3 +5,5 @@ resources:
   - rbac.yaml
   - workflow-template.yaml
   - cron-workflow.yaml
+configurations:
+  - kustomize-config.yaml
