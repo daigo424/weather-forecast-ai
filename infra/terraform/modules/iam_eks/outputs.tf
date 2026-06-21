@@ -1,5 +1,5 @@
-output "argo_workflows_role_arn" {
-  value = aws_iam_role.argo_workflows.arn
+output "ml_workflow_role_arn" {
+  value = aws_iam_role.ml_workflow.arn
 }
 
 output "mlflow_role_arn" {
