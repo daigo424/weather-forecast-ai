@@ -171,7 +171,70 @@ resource "aws_iam_role_policy_attachment" "lbc" {
 }
 
 # -------------------------------------------------------
-# 4. weather-api IRSA
+# 4. Argo Workflows Server IRSA
+# -------------------------------------------------------
+data "aws_iam_policy_document" "argo_workflows_server_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [var.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider}:sub"
+      values   = ["system:serviceaccount:argo:argo-server"]
+    }
+  }
+}
+
+resource "aws_iam_role" "argo_workflows_server" {
+  name               = "${var.name_prefix}-argo-workflows-server-role"
+  assume_role_policy = data.aws_iam_policy_document.argo_workflows_server_assume.json
+}
+
+data "aws_iam_policy_document" "argo_workflows_server_policy" {
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [var.ml_data_bucket_arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["logs/argo-workflows/*"]
+    }
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${var.ml_data_bucket_arn}/logs/argo-workflows/*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [var.kms_key_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "argo_workflows_server" {
+  name   = "${var.name_prefix}-argo-workflows-server-policy"
+  role   = aws_iam_role.argo_workflows_server.id
+  policy = data.aws_iam_policy_document.argo_workflows_server_policy.json
+}
+
+# -------------------------------------------------------
+# 5. weather-api IRSA
 # -------------------------------------------------------
 data "aws_iam_policy_document" "weather_api_assume" {
   statement {

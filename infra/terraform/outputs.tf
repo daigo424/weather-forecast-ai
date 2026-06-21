@@ -78,3 +78,7 @@ output "lbc_role_arn" {
 output "weather_api_role_arn" {
   value = try(module.iam_eks[0].weather_api_role_arn, null)
 }
+
+output "argo_workflows_server_role_arn" {
+  value = try(module.iam_eks[0].argo_workflows_server_role_arn, null)
+}
