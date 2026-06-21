@@ -83,7 +83,7 @@ jobs:
           BUCKET=$(terraform -chdir="$TF" output -raw ml_data_bucket_name)
           LBC_ARN=$(terraform -chdir="$TF" output -raw lbc_role_arn)
           MLFLOW_ARN=$(terraform -chdir="$TF" output -raw mlflow_role_arn)
-          ARGO_ARN=$(terraform -chdir="$TF" output -raw argo_workflows_role_arn)
+          ARGO_ARN=$(terraform -chdir="$TF" output -raw ml_workflow_role_arn)
           API_ARN=$(terraform -chdir="$TF" output -raw weather_api_role_arn)
 
           K8S="$GITHUB_WORKSPACE/infra/k8s"
