@@ -3,6 +3,12 @@ name: model-quality-check
 on:
   workflow_call:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/golden-dataset.dvc'
+      - 'src/**'
 
 jobs:
   model-quality-check:
