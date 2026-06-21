@@ -63,8 +63,8 @@ output "node_role_name" {
   value = try(module.eks[0].node_role_name, null)
 }
 
-output "argo_workflows_role_arn" {
-  value = try(module.iam_eks[0].argo_workflows_role_arn, null)
+output "ml_workflow_role_arn" {
+  value = try(module.iam_eks[0].ml_workflow_role_arn, null)
 }
 
 output "mlflow_role_arn" {

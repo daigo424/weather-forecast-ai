@@ -55,3 +55,13 @@ moved {
   from = aws_iam_role_policy.github_actions_role_policy
   to   = module.ml_data.aws_iam_role_policy.github_actions_role_policy
 }
+
+moved {
+  from = module.iam_eks[0].aws_iam_role.argo_workflows
+  to   = module.iam_eks[0].aws_iam_role.ml_workflow
+}
+
+moved {
+  from = module.iam_eks[0].aws_iam_role_policy.argo_workflows
+  to   = module.iam_eks[0].aws_iam_role_policy.ml_workflow
+}
