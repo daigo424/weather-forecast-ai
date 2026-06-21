@@ -14,7 +14,7 @@ spec:
     helm:
       valuesObject:
         global:
-          storageClass: gp2
+          storageClass: gp3
         architecture: standalone
         auth:
           enabled: false
