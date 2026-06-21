@@ -109,6 +109,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "ml_data" {
       days = 30
     }
   }
+
+  rule {
+    id     = "athena-results-lifecycle"
+    status = "Enabled"
+
+    filter {
+      prefix = "athena-results/"
+    }
+
+    expiration {
+      days = 3
+    }
+  }
 }
 
 # S3 bucket dedicated to storing access logs
