@@ -50,6 +50,24 @@ jobs:
           terraform init -backend-config=backend.hcl \
             -backend-config="key=workloads/${{ vars.WORKLOAD_NAME }}/${{ github.event.inputs.environment }}/additional_github_repos/${{ github.repository }}/terraform.tfstate"
 
+      - name: Drain Karpenter nodes before destroy
+        if: github.event.inputs.compute_enabled == 'false'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          CLUSTER_NAME=$(terraform output -raw eks_cluster_name 2>/dev/null || echo "")
+          if [ -z "$CLUSTER_NAME" ]; then
+            echo "No EKS cluster in state, skipping NodeClaim cleanup"
+            exit 0
+          fi
+
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region ap-northeast-1 || {
+            echo "Could not connect to EKS cluster, skipping NodeClaim cleanup"
+            exit 0
+          }
+
+          kubectl delete nodeclaims --all --ignore-not-found=true
+          kubectl wait --for=delete nodeclaims --all --timeout=5m || true
+
       - name: Terraform apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
