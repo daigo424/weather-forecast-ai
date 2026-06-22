@@ -16,6 +16,7 @@ on:
 
 env:
   TF_WORKING_DIR: "infra/terraform"   # Change to e.g. "terraform" if .tf files are in a subdirectory
+  ARGOCD_CHART_VERSION: "9.5.22"
 
 permissions:
   id-token: write
@@ -154,30 +155,27 @@ jobs:
           kubectl wait --for=condition=Available deployment/coredns -n kube-system --timeout=5m
 
           HELM_STATUS=$(helm status argocd -n argocd 2>/dev/null | grep "^STATUS:" | awk '{print $2}')
-          if [ "$HELM_STATUS" = "deployed" ]; then
-            echo "ArgoCD already deployed, skipping install"
-          else
-            if [ -n "$HELM_STATUS" ]; then
-              echo "Cleaning up argocd release in state: $HELM_STATUS"
-              helm uninstall argocd -n argocd || true
-              sleep 10
-            fi
-            helm upgrade --install argocd argo/argo-cd \
-              --namespace argocd \
-              --create-namespace \
-              --version "7.7.22" \
-              --set configs.params."server\.insecure"=true \
-              --wait \
-              --timeout 10m || {
-              echo "=== ArgoCD pod status ==="
-              kubectl get pods -n argocd -o wide || true
-              echo "=== ArgoCD events ==="
-              kubectl get events -n argocd --sort-by='.lastTimestamp' | tail -30 || true
-              echo "=== Node resource usage ==="
-              kubectl describe nodes | grep -A 10 "Allocated resources" || true
-              exit 1
-            }
+          if [ -n "$HELM_STATUS" ] && [ "$HELM_STATUS" != "deployed" ]; then
+            echo "Cleaning up argocd release in state: $HELM_STATUS"
+            helm uninstall argocd -n argocd || true
+            sleep 10
           fi
+
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --create-namespace \
+            --version "$ARGOCD_CHART_VERSION" \
+            --set configs.params."server\.insecure"=true \
+            --wait \
+            --timeout 10m || {
+            echo "=== ArgoCD pod status ==="
+            kubectl get pods -n argocd -o wide || true
+            echo "=== ArgoCD events ==="
+            kubectl get events -n argocd --sort-by='.lastTimestamp' | tail -30 || true
+            echo "=== Node resource usage ==="
+            kubectl describe nodes | grep -A 10 "Allocated resources" || true
+            exit 1
+          }
 
           kubectl apply -f - <<EOF
           apiVersion: v1
