@@ -4,7 +4,7 @@ variable "name_prefix" {
 
 variable "eks_version" {
   type    = string
-  default = "1.32"
+  default = "1.34"
 }
 
 variable "private_subnet_ids" {
