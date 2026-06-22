@@ -4,7 +4,8 @@ metadata:
   name: ml-workflow-cron
   namespace: argo
 spec:
-  schedule: "0 1 * * *"
+  schedules:
+    - "0 1 * * *"
   timezone: Asia/Tokyo
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
