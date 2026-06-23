@@ -6,6 +6,9 @@ metadata:
 spec:
   entrypoint: dag
   serviceAccountName: ml-workflow
+  artifactRepositoryRef:
+    configMap: artifact-repository
+    key: default
   templates:
     - name: dag
       dag:

@@ -35,12 +35,6 @@ spec:
           serviceAccount:
             create: true
             name: argo-workflows
-  ignoreDifferences:
-    - kind: ConfigMap
-      name: workflow-controller-configmap
-      namespace: argo
-      jsonPointers:
-        - /data/artifactRepository
   destination:
     server: https://kubernetes.default.svc
     namespace: argo
