@@ -48,6 +48,8 @@ spec:
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
             value: redis-master.redis.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -79,6 +81,8 @@ spec:
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
             value: redis-master.redis.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -110,6 +114,8 @@ spec:
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
             value: redis-master.redis.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -141,6 +147,8 @@ spec:
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
             value: redis-master.redis.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -172,6 +180,8 @@ spec:
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
             value: redis-master.redis.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -203,6 +213,8 @@ spec:
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
             value: redis-master.redis.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -236,6 +248,8 @@ spec:
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
             value: redis-master.redis.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
