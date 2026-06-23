@@ -1,13 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: workflow-controller-configmap
+  name: artifact-repository
   namespace: argo
 data:
-  artifactRepository: |
-    archiveLogs: true
+  default: |
     s3:
-      bucket: weather-forecast-ai-prod-ml-data
+      bucket: weather-forecast-ai-test-ml-data
       endpoint: s3.amazonaws.com
       region: ap-northeast-1
       useSDKCreds: true
