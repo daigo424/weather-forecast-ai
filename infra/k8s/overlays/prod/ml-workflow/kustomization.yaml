@@ -4,6 +4,7 @@ namespace: argo
 resources:
   - ../../../base/ml-workflow
   - ml-workflow-env.yaml
+  - artifact-repository.yaml
 patches:
   - patch: |-
       apiVersion: v1
