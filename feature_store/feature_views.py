@@ -16,7 +16,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from feast import Entity, FeatureService, FeatureView, Field, FileSource
-from feast.types import Float32
+from feast.types import Float32, String
 
 from packages.config import FEATURE_DIR as _FEATURE_DIR
 from packages.feature_engineering import ERROR_LAG_COLS
@@ -45,6 +45,7 @@ def _latest_data_version(location: str, interface_version: str) -> str:
 location_entity = Entity(
     name="location_name",
     join_keys=["location_name"],
+    value_type=String,
 )
 
 # ----------------------------------------------------------------
