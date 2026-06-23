@@ -19,4 +19,4 @@ patches:
 images:
 - name: REPLACE_WITH_ECR_WORKFLOW_URL
   newName: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-test/ml-workflow
-  newTag: 16d0bc9
+  newTag: a31e0d4
