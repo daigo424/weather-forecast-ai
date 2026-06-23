@@ -5,6 +5,7 @@ metadata:
   namespace: argo
 data:
   artifactRepository: |
+    archiveLogs: true
     s3:
       bucket: weather-forecast-ai-prod-ml-data
       endpoint: s3.amazonaws.com
