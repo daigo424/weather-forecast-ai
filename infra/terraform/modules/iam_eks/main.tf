@@ -192,7 +192,7 @@ data "aws_iam_policy_document" "argo_workflows_server_assume" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_provider}:sub"
-      values   = ["system:serviceaccount:argo:argo-server"]
+      values   = ["system:serviceaccount:argo:argo-workflows-server"]
     }
   }
 }
