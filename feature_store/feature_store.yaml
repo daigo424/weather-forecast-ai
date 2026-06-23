@@ -6,4 +6,4 @@ provider: local
 online_store:
   type: redis
   connection_string: "${REDIS_HOST}:${REDIS_PORT}"
-entity_key_serialization_version: 2
+entity_key_serialization_version: 3
