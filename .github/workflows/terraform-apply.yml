@@ -194,6 +194,45 @@ jobs:
 
           kubectl apply -f "$GITHUB_WORKSPACE/infra/k8s/bootstrap/root-app-${ENV}.yaml"
 
+      - name: Create feast database
+        if: github.event.inputs.compute_enabled == 'true'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          DB_PASSWORD: ${{ secrets.RDS_MLFLOW_PASSWORD }}
+        run: |
+          RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
+
+          kubectl run feast-db-init \
+            --image=postgres:16-alpine \
+            --restart=Never \
+            --namespace=default \
+            --env="PGPASSWORD=${DB_PASSWORD}" \
+            --command -- psql \
+            "postgresql://mlflow@${RDS_ENDPOINT}/mlflow" \
+            -c "CREATE DATABASE feast" || true
+
+          kubectl wait pod/feast-db-init --for=condition=Ready --timeout=60s || true
+          kubectl delete pod feast-db-init --ignore-not-found=true
+
+      - name: Create feast-secret
+        if: github.event.inputs.compute_enabled == 'true'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          DB_PASSWORD: ${{ secrets.RDS_MLFLOW_PASSWORD }}
+        run: |
+          RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
+
+          kubectl create namespace argo --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic feast-secret \
+            --namespace argo \
+            --from-literal=db-username="mlflow" \
+            --from-literal=db-password="${DB_PASSWORD}" \
+            --from-literal=db-host="${RDS_ENDPOINT}" \
+            --from-literal=db-port="5432" \
+            --from-literal=db-name="feast" \
+            --save-config \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Create mlflow-secret
         if: github.event.inputs.compute_enabled == 'true'
         working-directory: ${{ env.TF_WORKING_DIR }}
