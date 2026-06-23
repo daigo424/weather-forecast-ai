@@ -17,4 +17,4 @@ patches:
 images:
 - name: REPLACE_WITH_ECR_API_URL
   newName: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-test/api
-  newTag: 16d0bc9
+  newTag: a31e0d4
