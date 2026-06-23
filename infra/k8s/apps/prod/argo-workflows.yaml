@@ -29,6 +29,8 @@ spec:
               cpu: 50m
               memory: 128Mi
           serviceAccount:
+            create: true
+            name: argo-workflows-server
             annotations:
               eks.amazonaws.com/role-arn: REPLACE_WITH_ARGO_WORKFLOWS_SERVER_IRSA_ARN
         workflow:
