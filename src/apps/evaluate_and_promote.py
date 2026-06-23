@@ -18,14 +18,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import tempfile
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import mlflow
 import mlflow.pyfunc
 import numpy as np
 import pandas as pd
-from cloudpathlib import AnyPath
+from cloudpathlib import AnyPath, CloudPath
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from packages.config import ERROR_KEY_MAP, MLFLOW_TRACKING_URI, FEATURE_DIR, EVIDENTLY_DIR
@@ -223,6 +226,12 @@ def _run_evidently_report(
 # pyfunc ロードとモデル取り出し
 # ============================================================
 
+def _persist_outputs(src: Path, dest: CloudPath | Path) -> None:
+    for f in src.rglob("*"):
+        if f.is_file():
+            (dest / f.relative_to(src).as_posix()).write_bytes(f.read_bytes())
+
+
 def _load_pyfunc(model_name: str, version: str):
     """pyfunc をロードし、unwrap した WeatherForecastPyfunc インスタンスを返す。"""
     client    = mlflow.tracking.MlflowClient()
@@ -339,7 +348,10 @@ def run(
     df             = df.sort_values("datetime").reset_index(drop=True)
     logger.info("loaded features", path=str(feat_path), interface=interface_ver, data=data_ver, rows=len(df))
 
-    out_dir    = AnyPath(EVIDENTLY_WS) / location / run_date
+    persist_dir: CloudPath | Path = AnyPath(EVIDENTLY_WS) / location / run_date
+    _tmp_root  = tempfile.mkdtemp()
+    out_dir    = Path(_tmp_root) / location / run_date
+    out_dir.mkdir(parents=True, exist_ok=True)
     results    = {}
     all_passed = True
 
@@ -378,7 +390,6 @@ def run(
         "details":        results,
     }
 
-    out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "promotion_summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2, default=str),
         encoding="utf-8",
@@ -399,6 +410,13 @@ def run(
         mlflow.log_artifact(str(out_dir / "promotion_summary.json"), "evaluation")
         if HAS_EVIDENTLY and out_dir.exists():
             mlflow.log_artifacts(str(out_dir), "evidently_reports")
+
+    try:
+        _persist_outputs(out_dir, persist_dir)
+    except Exception as e:
+        logger.warning("persist failed", error=str(e))
+
+    shutil.rmtree(_tmp_root, ignore_errors=True)
 
     _push_metrics(results, location, all_passed)
     logger.info("evaluation complete", result="ALL PASS" if all_passed else "SOME FAILED")
