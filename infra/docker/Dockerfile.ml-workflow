@@ -13,4 +13,4 @@ COPY src/ ./src/
 COPY deployment/ ./deployment/
 COPY feature_store/ ./feature_store/
 
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app/src:/app
