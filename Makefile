@@ -93,6 +93,9 @@ shell-run-%:
 db:
 	$(EXEC) db psql "$(DB_URL)"
 
+airflow-password:
+	$(EXEC) airflow cat /opt/airflow/simple_auth_manager_passwords.json.generated
+
 # --- AWS / EKS / ArgoCD ---
 
 ENV ?= test
