@@ -19,8 +19,10 @@ module "network" {
 module "ecr" {
   count = local.is_test ? 1 : 0
 
-  source      = "./modules/ecr"
-  name_prefix = local.name_prefix
+  source                  = "./modules/ecr"
+  name_prefix             = local.name_prefix
+  docker_hub_username     = var.docker_hub_username
+  docker_hub_access_token = var.docker_hub_access_token
 }
 
 module "rds" {
