@@ -92,7 +92,7 @@ def run(location: str = "tokyo") -> None:
         else write_df["datetime"]
     )
 
-    store.write_to_online_store(error_lag_fv.name, write_df)
+    store.write_to_online_store(error_lag_fv.name, write_df, allow_registry_cache=False)
     logger.info("wrote to Online Store", rows=len(write_df), location=location)
 
 
