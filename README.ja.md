@@ -89,14 +89,13 @@ Open-Meteo Archive API               Open-Meteo Previous-Runs API
 ### 学習フロー
 
 ```
-fetch_data → train_model → evaluate_model → materialize_features → cleanup_mlflow
+fetch_data → train_model → evaluate_model → materialize_features
 ```
 
 1. **fetch_data** — ERA5 実測値と NWP 過去予報を Open-Meteo から増分取得し、`01_raw/` に JSON で保存した後、`02_processed/` に parquet として処理する
 2. **train_model** — 実測値/予報をマージし、ターゲットごとの誤差（`実測値 − NWP`）を計算し、ラグ/ローリング特徴量を生成し、4 本の LightGBM 回帰モデルを学習し、`WeatherForecastPyfunc` としてバンドルして MLflow モデルレジストリに `evaluated_successful=0` で登録する
 3. **evaluate_model** — 登録済みモデルをロードし、Evidently AI を使ってターゲットごとに MAE/RMSE/Bias を評価し、全ターゲットが閾値を通過すれば `evaluated_successful=1` タグを設定する
 4. **materialize_features** — Feast フィーチャー定義を適用し、直近の誤差ラグ特徴量を Redis（オンラインストア）に低レイテンシ推論のためプッシュする
-5. **cleanup_mlflow** — 古いモデルバージョン（最新 5 件 + 全 `evaluated_successful=1` を保持）をソフト削除し、`mlflow gc` を実行する
 
 ### 推論フロー
 

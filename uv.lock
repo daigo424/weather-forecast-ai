@@ -4576,7 +4576,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "alembic" },
     { name = "apache-airflow" },
     { name = "dvc" },
     { name = "dvc-s3" },
@@ -4589,7 +4588,6 @@ dev = [
     { name = "pydevd-pycharm" },
     { name = "pytest" },
     { name = "scipy-stubs" },
-    { name = "sqlalchemy" },
     { name = "streamlit" },
 ]
 
@@ -4619,7 +4617,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "alembic", specifier = ">=1.13" },
     { name = "apache-airflow", specifier = ">=3.2.1" },
     { name = "dvc", specifier = ">=3.67.1" },
     { name = "dvc-s3", specifier = ">=3.3.0" },
@@ -4632,7 +4629,6 @@ dev = [
     { name = "pydevd-pycharm", specifier = ">=262.6228.39" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "scipy-stubs", specifier = "~=1.17.1" },
-    { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "streamlit", specifier = ">=1.35.0" },
 ]
 

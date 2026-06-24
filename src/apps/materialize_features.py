@@ -7,6 +7,7 @@ feature_data_version を読み取り、対応する Feast Offline Store から
 """
 from __future__ import annotations
 
+import os
 import pandas as pd
 
 from packages.config import MLFLOW_TRACKING_URI, FEAST_REPO_PATH, FEATURE_DIR, get_model_interface_version
@@ -21,6 +22,23 @@ from feature_store.feature_views import (
 )
 
 logger = AppLogger("materialize_features")
+
+
+def _build_redis_connection_string() -> str:
+    """REDIS_HOST/PORT/PASSWORD/SSL から Feast 用カンマ区切り接続文字列を組み立てる。
+    Feast の connection_string は "host:port[,password=x][,ssl=True]" 形式のみ受け付ける。
+    REDIS_USERNAME は default ユーザー前提のため省略（password のみで AUTH が通る）。"""
+    host     = os.environ["REDIS_HOST"]
+    port     = os.environ["REDIS_PORT"]
+    password = os.environ.get("REDIS_PASSWORD", "")
+    ssl      = os.environ.get("REDIS_SSL", "false").lower() == "true"
+
+    conn = f"{host}:{port}"
+    if password:
+        conn += f",password={password}"
+    if ssl:
+        conn += ",ssl=True"
+    return conn
 
 
 def _load_active_model_tags(location: str) -> tuple[str, str]:
@@ -55,6 +73,7 @@ def run(location: str = "tokyo") -> None:
     df["datetime"] = pd.to_datetime(df["datetime"])
     logger.info("loaded features", rows=len(df), path=str(feat_path), interface=iv, data=dv)
 
+    os.environ["REDIS_CONNECTION_STRING"] = _build_redis_connection_string()
     store = FeatureStore(repo_path=FEAST_REPO_PATH)
     store.apply([location_entity, error_lag_fv, weather_features_service])
     logger.info("feast apply: registry updated", interface=iv)

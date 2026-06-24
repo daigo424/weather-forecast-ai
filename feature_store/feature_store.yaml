@@ -1,9 +1,9 @@
 project: weather_forecast
 registry:
   registry_type: sql
-  path: postgresql+psycopg2://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${FEAST_DB_NAME}
+  path: postgresql+psycopg2://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${FEAST_DB_NAME}?sslmode=${DB_SSLMODE}
 provider: local
 online_store:
   type: redis
-  connection_string: "${REDIS_HOST}:${REDIS_PORT}"
+  connection_string: "${REDIS_CONNECTION_STRING}"
 entity_key_serialization_version: 3

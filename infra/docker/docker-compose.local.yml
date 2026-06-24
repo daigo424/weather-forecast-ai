@@ -83,9 +83,13 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
       - DB_PORT=${DB_PORT}
+      - DB_SSLMODE=${DB_SSLMODE}
       - FEAST_DB_NAME=${FEAST_DB_NAME}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_USERNAME=${REDIS_USERNAME}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_SSL=${REDIS_SSL}
       - DATA_DIR=/app/data
       - EVIDENTLY_WORKSPACE=/app/data/evidently
       - PYTHONPATH=/opt/airflow/project/src:/opt/airflow/project
@@ -187,9 +191,13 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
       - DB_PORT=${DB_PORT}
+      - DB_SSLMODE=${DB_SSLMODE}
       - FEAST_DB_NAME=${FEAST_DB_NAME}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_USERNAME=${REDIS_USERNAME}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_SSL=${REDIS_SSL}
     volumes:
       - ../../feature_store:/feature_store
     ports:
