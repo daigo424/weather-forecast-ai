@@ -25,3 +25,13 @@ variable "vpc_cidr" {
   type        = string
   description = "既存 VPC の CIDR（network モジュールで VPC 検索に使用）"
 }
+
+variable "docker_hub_username" {
+  type      = string
+  sensitive = true
+}
+
+variable "docker_hub_access_token" {
+  type      = string
+  sensitive = true
+}
