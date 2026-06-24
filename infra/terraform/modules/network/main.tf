@@ -127,3 +127,45 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "${var.name_prefix}-s3-endpoint"
   }
 }
+
+resource "aws_security_group" "ecr_endpoint" {
+  name   = "${var.name_prefix}-ecr-endpoint-sg"
+  vpc_id = data.aws_vpc.main.id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.main.cidr_block]
+  }
+
+  tags = {
+    Name = "${var.name_prefix}-ecr-endpoint-sg"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = data.aws_vpc.main.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.ecr_endpoint.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.name_prefix}-ecr-api-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id              = data.aws_vpc.main.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.ecr_endpoint.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.name_prefix}-ecr-dkr-endpoint"
+  }
+}
