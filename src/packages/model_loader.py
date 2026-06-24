@@ -45,13 +45,19 @@ def find_active_model_version(location: str, interface_version: str) -> str:
     return best.version
 
 
+def load_model_version(model_name: str, version: str) -> mlflow.pyfunc.PyFuncModel:
+    """指定バージョンの pyfunc モデルをロードする。
+    models:/ URI を使うことで MLflow 3.x の search_logged_models 呼び出しを回避し
+    DagsHub 3.5.1 など古いサーバーでもハングしない。"""
+    return mlflow.pyfunc.load_model(f"models:/{model_name}/{version}")
+
+
 def load_model(location: str) -> mlflow.pyfunc.PyFuncModel:
     """起動時に呼ぶ。見つからない場合は RuntimeError → Pod 起動失敗。"""
     interface_version = get_model_interface_version()
     registry_version = find_active_model_version(location, interface_version)
     model_name = pipeline_model_name(location)
-    uri = f"models:/{model_name}/{registry_version}"
-    return mlflow.pyfunc.load_model(uri)
+    return load_model_version(model_name, registry_version)
 
 
 def get_active_model_info(location: str) -> dict:
