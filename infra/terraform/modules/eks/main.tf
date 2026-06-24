@@ -90,6 +90,20 @@ resource "aws_iam_role_policy_attachment" "node_ecr_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
+resource "aws_iam_role_policy" "node_pull_through_cache" {
+  name = "${var.name_prefix}-node-pull-through-cache"
+  role = aws_iam_role.node.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ecr:BatchImportUpstreamImage", "ecr:CreateRepository"]
+      Resource = "*"
+    }]
+  })
+}
+
 # -------------------------------------------------------
 # System Node Group
 # -------------------------------------------------------

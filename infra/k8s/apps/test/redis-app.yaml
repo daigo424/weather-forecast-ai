@@ -15,6 +15,7 @@ spec:
       valuesObject:
         global:
           storageClass: gp3
+          imageRegistry: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/docker.io
         architecture: standalone
         auth:
           enabled: false
