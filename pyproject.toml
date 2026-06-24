@@ -52,6 +52,4 @@ dev = [
     "matplotlib>=3.10.9",
     "pandas-stubs~=2.2.3",
     "scipy-stubs~=1.17.1",
-    "sqlalchemy>=2.0",
-    "alembic>=1.13",
 ]

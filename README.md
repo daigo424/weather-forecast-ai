@@ -89,14 +89,13 @@ Open-Meteo Archive API               Open-Meteo Previous-Runs API
 ### Training flow
 
 ```
-fetch_data → train_model → evaluate_model → materialize_features → cleanup_mlflow
+fetch_data → train_model → evaluate_model → materialize_features
 ```
 
 1. **fetch_data** — Incrementally fetches ERA5 actuals and NWP past forecasts from Open-Meteo, saves as JSON in `01_raw/`, then processes to parquet in `02_processed/`
 2. **train_model** — Merges actual/forecast, computes per-target error (`actual − NWP`), builds lag/rolling features, trains 4 LightGBM regressors, bundles into `WeatherForecastPyfunc`, and registers to MLflow Model Registry with `evaluated_successful=0`
 3. **evaluate_model** — Loads the registered model, evaluates MAE/RMSE/Bias per target using Evidently AI, sets `evaluated_successful=1` tag if all thresholds pass
 4. **materialize_features** — Applies Feast feature definitions and pushes recent error lag features to Redis (online store) for low-latency inference
-5. **cleanup_mlflow** — Soft-deletes old model versions (keeps latest 5 + all `evaluated_successful=1`) and runs `mlflow gc`
 
 ### Inference flow
 

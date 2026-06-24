@@ -46,10 +46,6 @@ spec:
         env:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
-          - name: REDIS_HOST
-            value: redis-master.redis.svc.cluster.local
-          - name: REDIS_PORT
-            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -79,10 +75,6 @@ spec:
         env:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
-          - name: REDIS_HOST
-            value: redis-master.redis.svc.cluster.local
-          - name: REDIS_PORT
-            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -112,10 +104,6 @@ spec:
         env:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
-          - name: REDIS_HOST
-            value: redis-master.redis.svc.cluster.local
-          - name: REDIS_PORT
-            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -145,10 +133,6 @@ spec:
         env:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
-          - name: REDIS_HOST
-            value: redis-master.redis.svc.cluster.local
-          - name: REDIS_PORT
-            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -178,10 +162,6 @@ spec:
         env:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
-          - name: REDIS_HOST
-            value: redis-master.redis.svc.cluster.local
-          - name: REDIS_PORT
-            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -211,10 +191,6 @@ spec:
         env:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
-          - name: REDIS_HOST
-            value: redis-master.redis.svc.cluster.local
-          - name: REDIS_PORT
-            value: "6379"
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -247,9 +223,30 @@ spec:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: REDIS_HOST
-            value: redis-master.redis.svc.cluster.local
+            valueFrom:
+              secretKeyRef:
+                name: feast-secret
+                key: redis-host
           - name: REDIS_PORT
-            value: "6379"
+            valueFrom:
+              secretKeyRef:
+                name: feast-secret
+                key: redis-port
+          - name: REDIS_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: feast-secret
+                key: redis-username
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: feast-secret
+                key: redis-password
+          - name: REDIS_SSL
+            valueFrom:
+              secretKeyRef:
+                name: feast-secret
+                key: redis-ssl
           - name: S3_ML_DATA_BUCKET
             valueFrom:
               configMapKeyRef:
@@ -280,6 +277,11 @@ spec:
               secretKeyRef:
                 name: feast-secret
                 key: db-name
+          - name: DB_SSLMODE
+            valueFrom:
+              secretKeyRef:
+                name: feast-secret
+                key: db-sslmode
           - name: LOG_FORMAT
             value: json
         resources:
