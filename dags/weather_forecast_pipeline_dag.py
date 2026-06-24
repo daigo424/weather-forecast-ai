@@ -59,6 +59,8 @@ def _fetch_data(**context) -> None:
     from apps.process_forecast_all_params import run as process_forecast
     from packages.config import LOCATIONS
 
+    skip_api_fetch = os.environ.get("SKIP_FETCH_DATA", "false").lower() == "true"
+
     today = date.today()
     actual_end   = today - timedelta(days=6)   # ERA5 archive は ~6日ラグ
     forecast_end = today - timedelta(days=1)   # previous-runs は前日まで
@@ -77,15 +79,21 @@ def _fetch_data(**context) -> None:
     forecast_start = _start_from(latest_forecasts)
 
     if actual_start <= actual_end:
-        print(f"[fetch] actual:   {actual_start} – {actual_end}")
-        fetch_actual(start=actual_start, end=actual_end)
+        if skip_api_fetch:
+            print(f"[fetch] actual: API fetch skipped (SKIP_FETCH_DATA=true)")
+        else:
+            print(f"[fetch] actual:   {actual_start} – {actual_end}")
+            fetch_actual(start=actual_start, end=actual_end)
         process_actual(start=actual_start, end=actual_end)
     else:
         print(f"[fetch] actual: up to date (latest={max(d for d in latest_actuals if d)})")
 
     if forecast_start <= forecast_end:
-        print(f"[fetch] forecast: {forecast_start} – {forecast_end}")
-        fetch_forecast(start=forecast_start, end=forecast_end)
+        if skip_api_fetch:
+            print(f"[fetch] forecast: API fetch skipped (SKIP_FETCH_DATA=true)")
+        else:
+            print(f"[fetch] forecast: {forecast_start} – {forecast_end}")
+            fetch_forecast(start=forecast_start, end=forecast_end)
         process_forecast(start=forecast_start, end=forecast_end)
     else:
         print(f"[fetch] forecast: up to date (latest={max(d for d in latest_forecasts if d)})")
