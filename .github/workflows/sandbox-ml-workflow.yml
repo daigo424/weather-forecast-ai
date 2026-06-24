@@ -1,4 +1,4 @@
-name: ML Pipeline
+name: Sandbox ML Pipeline
 
 on:
   schedule:
@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
       MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
       MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
@@ -24,6 +23,17 @@ jobs:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:///${{ github.workspace }}/airflow-meta.db
+      DB_HOST: ${{ secrets.SANDBOX_DB_HOST }}
+      DB_USERNAME: ${{ secrets.SANDBOX_DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.SANDBOX_DB_PASSWORD }}
+      DB_PORT: "5432"
+      FEAST_DB_NAME: feast
+      DB_SSLMODE: require
+      REDIS_HOST: ${{ secrets.SANDBOX_REDIS_HOST }}
+      REDIS_PORT: ${{ secrets.SANDBOX_REDIS_PORT }}
+      REDIS_USERNAME: ${{ secrets.SANDBOX_REDIS_USERNAME }}
+      REDIS_PASSWORD: ${{ secrets.SANDBOX_REDIS_PASSWORD }}
+      REDIS_SSL: "true"
 
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +44,6 @@ jobs:
 
       - name: Install dependencies
         run: uv sync
-
-      - name: DB migrate
-        run: uv run alembic upgrade head
 
       - name: Init Airflow metadata DB
         run: uv run airflow db migrate
