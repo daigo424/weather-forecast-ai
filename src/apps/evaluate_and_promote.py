@@ -33,6 +33,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from packages.config import ERROR_KEY_MAP, MLFLOW_TRACKING_URI, FEATURE_DIR, EVIDENTLY_DIR
 from packages.logger import AppLogger
+from packages.model_loader import load_model_version
 from apps.weather_pyfunc import pipeline_model_name
 
 logger = AppLogger("evaluate_and_promote")
@@ -234,11 +235,7 @@ def _persist_outputs(src: Path, dest: CloudPath | Path) -> None:
 
 def _load_pyfunc(model_name: str, version: str):
     """pyfunc をロードし、unwrap した WeatherForecastPyfunc インスタンスを返す。"""
-    client    = mlflow.tracking.MlflowClient()
-    ver_info  = client.get_model_version(model_name, version)
-    model_uri = f"runs:/{ver_info.run_id}/model"
-    loaded    = mlflow.pyfunc.load_model(model_uri)
-    return loaded.unwrap_python_model()
+    return load_model_version(model_name, version).unwrap_python_model()
 
 
 # ============================================================
