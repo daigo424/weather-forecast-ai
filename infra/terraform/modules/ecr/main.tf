@@ -1,3 +1,8 @@
+resource "aws_ecr_pull_through_cache_rule" "docker_hub" {
+  ecr_repository_prefix = "docker.io"
+  upstream_registry_url = "registry-1.docker.io"
+}
+
 resource "aws_ecr_repository" "repos" {
   for_each = toset(["api", "ml-workflow", "frontend"])
 
