@@ -1,5 +1,5 @@
 resource "aws_secretsmanager_secret" "docker_hub" {
-  name                    = "${var.name_prefix}-ecr-pull-through-docker-hub"
+  name                    = "ecr-pullthroughcache/${var.name_prefix}-docker-hub"
   recovery_window_in_days = 0
 }
 
