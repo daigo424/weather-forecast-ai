@@ -31,7 +31,7 @@ jobs:
       DB_USERNAME: ${{ secrets.SANDBOX_DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.SANDBOX_DB_PASSWORD }}
       DB_PORT: "5432"
-      FEAST_DB_NAME: feast
+      FEAST_DB_NAME: ${{ secrets.SANDBOX_FEAST_DB_NAME }}
       DB_SSLMODE: require
       REDIS_HOST: ${{ secrets.SANDBOX_REDIS_HOST }}
       REDIS_PORT: ${{ secrets.SANDBOX_REDIS_PORT }}
