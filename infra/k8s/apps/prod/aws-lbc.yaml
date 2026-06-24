@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://aws.github.io/eks-charts
     chart: aws-load-balancer-controller
-    targetRevision: "2.x.x"
+    targetRevision: "1.x.x"
     helm:
       parameters:
         - name: clusterName
