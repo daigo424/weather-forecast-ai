@@ -19,6 +19,11 @@ resource "aws_ecr_pull_through_cache_rule" "docker_hub" {
   depends_on = [aws_secretsmanager_secret_version.docker_hub]
 }
 
+resource "aws_ecr_pull_through_cache_rule" "ecr_public" {
+  ecr_repository_prefix = "public.ecr.aws"
+  upstream_registry_url = "public.ecr.aws"
+}
+
 resource "aws_ecr_repository" "repos" {
   for_each = toset(["api", "ml-workflow", "frontend"])
 
