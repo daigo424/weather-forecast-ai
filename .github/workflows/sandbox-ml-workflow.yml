@@ -13,6 +13,10 @@ jobs:
     name: weather_forecast_pipeline (Airflow DAG)
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write
+      contents: read
+
     env:
       MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
       MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
@@ -34,6 +38,7 @@ jobs:
       REDIS_USERNAME: ${{ secrets.SANDBOX_REDIS_USERNAME }}
       REDIS_PASSWORD: ${{ secrets.SANDBOX_REDIS_PASSWORD }}
       REDIS_SSL: "true"
+      SKIP_FETCH_DATA: "true"
 
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +49,27 @@ jobs:
 
       - name: Install dependencies
         run: uv sync
+
+      - name: Cache golden dataset
+        id: cache-golden
+        uses: actions/cache@v4
+        with:
+          path: data/golden-dataset
+          key: golden-dataset-${{ hashFiles('data/golden-dataset.dvc') }}
+
+      - name: Configure AWS credentials (OIDC)
+        if: steps.cache-golden.outputs.cache-hit != 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.TEST_ACCOUNT_ID }}:role/GitHubActionsWorkloadDeployRole
+          aws-region: ap-northeast-1
+
+      - name: Pull golden dataset from S3
+        if: steps.cache-golden.outputs.cache-hit != 'true'
+        run: uv run dvc pull data/golden-dataset.dvc
+
+      - name: Link golden dataset as raw data
+        run: ln -s ${{ github.workspace }}/data/golden-dataset ${{ github.workspace }}/data/01_raw
 
       - name: Init Airflow metadata DB
         run: uv run airflow db migrate
