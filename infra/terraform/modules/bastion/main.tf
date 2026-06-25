@@ -52,13 +52,14 @@ resource "aws_instance" "bastion" {
   instance_type               = "t3.nano"
   subnet_id                   = var.public_subnet_id
   associate_public_ip_address = true
+  user_data_replace_on_change = true
   iam_instance_profile        = aws_iam_instance_profile.bastion.name
   vpc_security_group_ids      = [aws_security_group.bastion.id]
 
   user_data = <<-EOF
     #!/bin/bash
     systemctl enable amazon-ssm-agent
-    systemctl start amazon-ssm-agent
+    systemctl restart amazon-ssm-agent
   EOF
 
   tags = {
