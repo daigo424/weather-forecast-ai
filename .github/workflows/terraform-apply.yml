@@ -94,6 +94,17 @@ jobs:
           VAR_NAME="COMPUTE_ENABLED_$(echo "$ENV" | tr '[:lower:]' '[:upper:]')"
           gh variable set "$VAR_NAME" --body "$COMPUTE"
 
+      - name: Record bastion instance ID
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          INSTANCE_ID=$(terraform output -raw bastion_instance_id 2>/dev/null || echo "")
+          [ -z "$INSTANCE_ID" ] && exit 0
+          VAR_NAME="BASTION_INSTANCE_ID_$(echo "$ENV" | tr '[:lower:]' '[:upper:]')"
+          gh variable set "$VAR_NAME" --body "$INSTANCE_ID"
+
       - name: Fill K8s placeholders from Terraform outputs
         if: github.event.inputs.compute_enabled == 'true'
         run: |
