@@ -1,15 +1,15 @@
-resource "aws_db_subnet_group" "mlflow" {
-  name       = "${var.name_prefix}-mlflow"
+resource "aws_db_subnet_group" "ml_db" {
+  name       = var.name_prefix
   subnet_ids = var.private_subnet_ids
 
   tags = {
-    Name = "${var.name_prefix}-mlflow-subnet-group"
+    Name = "${var.name_prefix}-subnet-group"
   }
 }
 
-resource "aws_security_group" "rds" {
+resource "aws_security_group" "ml_db" {
   name        = "${var.name_prefix}-rds-sg"
-  description = "Security group for MLflow RDS"
+  description = "Security group for RDS"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -42,31 +42,32 @@ resource "aws_security_group" "rds" {
   }
 }
 
-resource "aws_db_instance" "mlflow" {
-  identifier            = "${var.name_prefix}-mlflow"
+resource "aws_db_instance" "ml_db" {
+  identifier            = var.name_prefix
   engine                = "postgres"
   engine_version        = "16"
   instance_class        = "db.t3.micro"
   allocated_storage     = 20
   max_allocated_storage = 100
 
-  db_name  = "mlflow"
+  db_name  = "ml_app"
   username = var.db_username
   password = "dummydummydummydummy"
 
-  db_subnet_group_name   = aws_db_subnet_group.mlflow.name
-  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name   = aws_db_subnet_group.ml_db.name
+  vpc_security_group_ids = [aws_security_group.ml_db.id]
 
   multi_az            = false
   publicly_accessible = true
+  apply_immediately   = true
 
   backup_retention_period   = 1
   skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.name_prefix}-mlflow-final"
+  final_snapshot_identifier = "${var.name_prefix}-final"
   deletion_protection       = false
 
   tags = {
-    Name = "${var.name_prefix}-mlflow"
+    Name = var.name_prefix
   }
 
   lifecycle {
