@@ -98,10 +98,13 @@ airflow-password:
 
 # --- AWS / EKS / ArgoCD ---
 
-ENV ?= test
+AWS_ENV ?= test
 
 get-caller-identity:
 	aws sts get-caller-identity
+
+rds-tunnel: check-aws-profile
+	python scripts/rds_tunnel.py --env $(AWS_ENV)
 
 check-aws-profile:
 ifndef AWS_PROFILE
@@ -110,9 +113,6 @@ endif
 
 kubeconfig: check-aws-profile
 	aws eks update-kubeconfig --name $(shell aws eks list-clusters --query 'clusters[0]' --output text) --region ap-northeast-1 --role-arn arn:aws:iam::$(shell aws sts get-caller-identity --query Account --output text):role/$(shell aws eks list-clusters --query 'clusters[0]' --output text)-eks-developer
-
-get-ingress:
-	kubectl get ingress -n weather
 
 argocd-ui: check-aws-profile kubeconfig
 	@echo -----------------------------
