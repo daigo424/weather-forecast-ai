@@ -16,7 +16,7 @@ variable "private_subnet_ids" {
 
 variable "db_username" {
   type    = string
-  default = "mlflow"
+  default = "admin"
 }
 
 variable "allowed_cidrs" {
