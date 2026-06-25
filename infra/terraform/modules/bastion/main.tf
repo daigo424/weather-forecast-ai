@@ -48,11 +48,18 @@ resource "aws_security_group" "bastion" {
 }
 
 resource "aws_instance" "bastion" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = "t3.nano"
-  subnet_id              = var.public_subnet_id
-  iam_instance_profile   = aws_iam_instance_profile.bastion.name
-  vpc_security_group_ids = [aws_security_group.bastion.id]
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = "t3.nano"
+  subnet_id                   = var.public_subnet_id
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.bastion.name
+  vpc_security_group_ids      = [aws_security_group.bastion.id]
+
+  user_data = <<-EOF
+    #!/bin/bash
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
+  EOF
 
   tags = {
     Name = "${var.name_prefix}-bastion"
