@@ -33,6 +33,7 @@ module "rds" {
   vpc_id             = module.network[0].vpc_id
   vpc_cidr           = module.network[0].vpc_cidr
   private_subnet_ids = module.network[0].private_subnet_ids
+  allowed_cidrs      = local.vpn_cidrs
 }
 
 module "eks" {
