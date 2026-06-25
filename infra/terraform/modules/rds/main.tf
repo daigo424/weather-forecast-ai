@@ -19,6 +19,17 @@ resource "aws_security_group" "rds" {
     cidr_blocks = [var.vpc_cidr]
   }
 
+  dynamic "ingress" {
+    for_each = length(var.allowed_cidrs) > 0 ? [1] : []
+    content {
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      cidr_blocks = var.allowed_cidrs
+      description = "Additional access for local development"
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -47,7 +58,7 @@ resource "aws_db_instance" "mlflow" {
   vpc_security_group_ids = [aws_security_group.rds.id]
 
   multi_az            = false
-  publicly_accessible = false
+  publicly_accessible = true
 
   backup_retention_period   = 1
   skip_final_snapshot       = false
