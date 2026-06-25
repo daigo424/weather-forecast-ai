@@ -25,6 +25,15 @@ module "ecr" {
   docker_hub_access_token = var.docker_hub_access_token
 }
 
+module "bastion" {
+  count = local.is_test ? 1 : 0
+
+  source           = "./modules/bastion"
+  name_prefix      = local.name_prefix
+  vpc_id           = module.network[0].vpc_id
+  public_subnet_id = module.network[0].public_subnet_ids[0]
+}
+
 module "rds" {
   count = local.is_test ? 1 : 0
 

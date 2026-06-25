@@ -41,6 +41,11 @@ output "ecr_urls" {
   value = try(module.ecr[0].repository_urls, null)
 }
 
+# Bastion
+output "bastion_instance_id" {
+  value = try(module.bastion[0].instance_id, null)
+}
+
 # RDS
 output "rds_endpoint" {
   value = try(module.rds[0].endpoint, null)
