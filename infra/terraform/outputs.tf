@@ -47,13 +47,13 @@ output "bastion_instance_id" {
 }
 
 # RDS
-# output "rds_endpoint" {
-#   value = try(module.rds[0].endpoint, null)
-# }
-#
-# output "rds_db_name" {
-#   value = try(module.rds[0].db_name, null)
-# }
+output "rds_endpoint" {
+  value = try(module.rds[0].endpoint, null)
+}
+
+output "rds_db_name" {
+  value = try(module.rds[0].db_name, null)
+}
 
 # IRSA
 output "karpenter_role_arn" {
