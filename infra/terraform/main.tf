@@ -34,16 +34,16 @@ module "bastion" {
   public_subnet_id = module.network[0].public_subnet_ids[0]
 }
 
-module "rds" {
-  count = local.is_test ? 1 : 0
-
-  source             = "./modules/rds"
-  name_prefix        = local.name_prefix
-  vpc_id             = module.network[0].vpc_id
-  vpc_cidr           = module.network[0].vpc_cidr
-  private_subnet_ids = module.network[0].private_subnet_ids
-  allowed_cidrs      = local.vpn_cidrs
-}
+# module "rds" {
+#   count = local.is_test ? 1 : 0
+#
+#   source             = "./modules/rds"
+#   name_prefix        = local.name_prefix
+#   vpc_id             = module.network[0].vpc_id
+#   vpc_cidr           = module.network[0].vpc_cidr
+#   private_subnet_ids = module.network[0].private_subnet_ids
+#   allowed_cidrs      = local.vpn_cidrs
+# }
 
 module "eks" {
   count = local.create_compute ? 1 : 0
