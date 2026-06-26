@@ -24,6 +24,10 @@ spec:
             - "0.0.0.0"
             - --port
             - "5000"
+            - --backend-store-uri
+            - $(BACKEND_STORE_URI)
+            - --default-artifact-root
+            - $(ARTIFACT_ROOT)
           ports:
             - containerPort: 5000
           env:
@@ -40,9 +44,9 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 512Mi
+              memory: 256Mi
             limits:
-              memory: 1Gi
+              memory: 512Mi
           livenessProbe:
             httpGet:
               path: /health
