@@ -41,7 +41,7 @@ spec:
 
     - name: fetch-actual
       container:
-        image: REPLACE_WITH_ECR_WORKFLOW_URL
+        image: REPLACE_WITH_ECR_ML_WORKFLOW_URL
         command: ["python", "src/apps/fetch_actual_all_params.py"]
         env:
           - name: MLFLOW_TRACKING_URI
@@ -70,7 +70,7 @@ spec:
 
     - name: fetch-forecast
       container:
-        image: REPLACE_WITH_ECR_WORKFLOW_URL
+        image: REPLACE_WITH_ECR_ML_WORKFLOW_URL
         command: ["python", "src/apps/fetch_forecast_all_params.py"]
         env:
           - name: MLFLOW_TRACKING_URI
@@ -99,7 +99,7 @@ spec:
 
     - name: process-actual
       container:
-        image: REPLACE_WITH_ECR_WORKFLOW_URL
+        image: REPLACE_WITH_ECR_ML_WORKFLOW_URL
         command: ["python", "src/apps/process_actual_all_params.py"]
         env:
           - name: MLFLOW_TRACKING_URI
@@ -128,7 +128,7 @@ spec:
 
     - name: process-forecast
       container:
-        image: REPLACE_WITH_ECR_WORKFLOW_URL
+        image: REPLACE_WITH_ECR_ML_WORKFLOW_URL
         command: ["python", "src/apps/process_forecast_all_params.py"]
         env:
           - name: MLFLOW_TRACKING_URI
@@ -157,7 +157,7 @@ spec:
 
     - name: train
       container:
-        image: REPLACE_WITH_ECR_WORKFLOW_URL
+        image: REPLACE_WITH_ECR_ML_WORKFLOW_URL
         command: ["python", "src/apps/train_pipeline.py"]
         env:
           - name: MLFLOW_TRACKING_URI
@@ -186,7 +186,7 @@ spec:
 
     - name: evaluate
       container:
-        image: REPLACE_WITH_ECR_WORKFLOW_URL
+        image: REPLACE_WITH_ECR_ML_WORKFLOW_URL
         command: ["python", "src/apps/evaluate_and_promote.py"]
         env:
           - name: MLFLOW_TRACKING_URI
@@ -217,7 +217,7 @@ spec:
 
     - name: materialize
       container:
-        image: REPLACE_WITH_ECR_WORKFLOW_URL
+        image: REPLACE_WITH_ECR_ML_WORKFLOW_URL
         command: ["python", "src/apps/materialize_features.py"]
         env:
           - name: MLFLOW_TRACKING_URI

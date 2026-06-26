@@ -16,8 +16,12 @@ on:
         description: "Deploy frontend"
         type: boolean
         default: false
-      workflow:
+      ml_workflow:
         description: "Deploy ml-workflow"
+        type: boolean
+        default: false
+      mlflow:
+        description: "Deploy mlflow"
         type: boolean
         default: false
 
@@ -26,9 +30,48 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  # ▼ 新しいサービスを追加するときは inputs に boolean を追加し、ここにも追記する
+  # 命名規則: Dockerfile.{service} / REPLACE_WITH_ECR_{SERVICE_UPPER}_URL
+  TARGET_SERVICES: "api frontend ml-workflow mlflow"
+
 jobs:
-  deploy:
+  # input name (ml_workflow) → service name (ml-workflow) の変換は tr '_' '-' で自動処理
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      matrix:   ${{ steps.set.outputs.matrix }}
+      services: ${{ steps.set.outputs.services }}
+    steps:
+      - id: set
+        run: |
+          INPUTS='${{ toJSON(inputs) }}'
+          svcs=()
+          for svc in $TARGET_SERVICES; do
+            key=$(echo "$svc" | tr '-' '_')
+            echo "$INPUTS" | jq -e --arg k "$key" '.[$k] == "true"' > /dev/null && svcs+=("$svc")
+          done
+
+          includes=()
+          for svc in "${svcs[@]}"; do
+            dockerfile="Dockerfile.$svc"
+            placeholder=$(echo "REPLACE_WITH_ECR_${svc}_URL" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+            includes+=("{\"service\":\"$svc\",\"dockerfile\":\"$dockerfile\",\"placeholder\":\"$placeholder\"}")
+          done
+
+          joined=$(IFS=,; echo "${includes[*]}")
+          echo "matrix={\"include\":[$joined]}" >> "$GITHUB_OUTPUT"
+          echo "services=$(IFS=,; echo "${svcs[*]}")" >> "$GITHUB_OUTPUT"
+
+  # ─────────────────────────────────────────────
+  # サービスごとに並列で Build & Push & kustomize 更新
+  # ─────────────────────────────────────────────
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +79,7 @@ jobs:
       - name: Resolve account ID
         id: account
         run: |
-          case "${{ github.event.inputs.environment }}" in
+          case "${{ inputs.environment }}" in
             prod) echo "id=${{ vars.PROD_ACCOUNT_ID }}" >> "$GITHUB_OUTPUT" ;;
             test) echo "id=${{ vars.TEST_ACCOUNT_ID }}" >> "$GITHUB_OUTPUT" ;;
           esac
@@ -49,57 +92,54 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set variables
+      - name: Set image variables
+        id: img
         run: |
-          ENV="${{ github.event.inputs.environment }}"
-          echo "TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
-          echo "ECR_BASE=${{ steps.account.outputs.id }}.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-${ENV}" >> "$GITHUB_ENV"
-          echo "OVERLAY_DIR=infra/k8s/overlays/${ENV}" >> "$GITHUB_ENV"
-          echo "BRANCH=deploy/${ENV}/image-tags-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          echo "ecr_base=${{ steps.account.outputs.id }}.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - name: Create branch
+      - name: Build and push ${{ matrix.service }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
+          docker build -f "infra/docker/${{ matrix.dockerfile }}" \
+            -t "${{ steps.img.outputs.ecr_base }}/${{ matrix.service }}:${{ steps.img.outputs.tag }}" .
+          docker push "${{ steps.img.outputs.ecr_base }}/${{ matrix.service }}:${{ steps.img.outputs.tag }}"
 
-      # --- api ---
-      - name: Build and push api
-        if: github.event.inputs.api == 'true'
+      - name: Update ${{ matrix.service }} image tag
         run: |
-          docker build -f infra/docker/Dockerfile.api -t "$ECR_BASE/api:$TAG" .
-          docker push "$ECR_BASE/api:$TAG"
+          cd "infra/k8s/overlays/${{ inputs.environment }}/${{ matrix.service }}"
+          kustomize edit set image \
+            "${{ matrix.placeholder }}=${{ steps.img.outputs.ecr_base }}/${{ matrix.service }}:${{ steps.img.outputs.tag }}"
 
-      - name: Update api image tag
-        if: github.event.inputs.api == 'true'
-        working-directory: ${{ env.OVERLAY_DIR }}/api
-        run: kustomize edit set image REPLACE_WITH_ECR_API_URL="$ECR_BASE/api:$TAG"
+      - name: Upload kustomization artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kustomization-${{ matrix.service }}
+          path: infra/k8s/overlays/${{ inputs.environment }}/${{ matrix.service }}/kustomization.yaml
 
-      # --- frontend ---
-      - name: Build and push frontend
-        if: github.event.inputs.frontend == 'true'
+  # ─────────────────────────────────────────────
+  # 全サービスの kustomization を集約してコミット & PR
+  # ─────────────────────────────────────────────
+  commit:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download kustomization artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: kustomization-*
+          path: .kustomizations
+
+      - name: Apply kustomization changes
         run: |
-          docker build -f infra/docker/Dockerfile.streamlit -t "$ECR_BASE/frontend:$TAG" .
-          docker push "$ECR_BASE/frontend:$TAG"
+          IFS=',' read -ra svcs <<< "${{ needs.prepare.outputs.services }}"
+          for svc in "${svcs[@]}"; do
+            cp ".kustomizations/kustomization-$svc/kustomization.yaml" \
+               "infra/k8s/overlays/${{ inputs.environment }}/$svc/kustomization.yaml"
+          done
 
-      - name: Update frontend image tag
-        if: github.event.inputs.frontend == 'true'
-        working-directory: ${{ env.OVERLAY_DIR }}/frontend
-        run: kustomize edit set image REPLACE_WITH_ECR_FRONTEND_URL="$ECR_BASE/frontend:$TAG"
-
-      # --- ml-workflow ---
-      - name: Build and push workflow
-        if: github.event.inputs.workflow == 'true'
-        run: |
-          docker build -f infra/docker/Dockerfile.ml-workflow -t "$ECR_BASE/ml-workflow:$TAG" .
-          docker push "$ECR_BASE/ml-workflow:$TAG"
-
-      - name: Update workflow image tag
-        if: github.event.inputs.workflow == 'true'
-        working-directory: ${{ env.OVERLAY_DIR }}/ml-workflow
-        run: kustomize edit set image REPLACE_WITH_ECR_WORKFLOW_URL="$ECR_BASE/ml-workflow:$TAG"
-
-      # --- PR 作成 & マージ ---
       - name: Generate token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -111,21 +151,25 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          TAG="${GITHUB_SHA::7}"
+          BRANCH="deploy/${{ inputs.environment }}/image-tags-$TAG"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add infra/k8s/overlays/
           git diff --staged --quiet && echo "No changes to deploy" && exit 0
 
-          git commit -m "chore(${{ github.event.inputs.environment }}): update image tags to $TAG"
+          git commit -m "chore(${{ inputs.environment }}): update image tags to $TAG"
           git push origin "$BRANCH"
 
           PR_URL=$(gh pr create \
-            --title "chore(${{ github.event.inputs.environment }}): update image tags to $TAG" \
-            --body "$(printf 'Environment: **%s**\nDeployed by: @%s\nWorkflow run: %s\n\n| Service | Image |\n|---------|-------|\n| api | %s |\n| frontend | %s |\n| workflow | %s |' \
-              '${{ github.event.inputs.environment }}' \
+            --title "chore(${{ inputs.environment }}): update image tags to $TAG" \
+            --body "$(printf 'Environment: **%s**\nDeployed by: @%s\nServices: `%s`\nWorkflow run: %s' \
+              '${{ inputs.environment }}' \
               '${{ github.actor }}' \
-              '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' \
-              "$ECR_BASE/api:$TAG" \
-              "$ECR_BASE/frontend:$TAG" \
-              "$ECR_BASE/ml-workflow:$TAG")" \
+              '${{ needs.prepare.outputs.services }}' \
+              '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')" \
             --base main \
             --head "$BRANCH")
 
