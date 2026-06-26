@@ -23,6 +23,8 @@ module "ecr" {
   name_prefix             = local.name_prefix
   docker_hub_username     = var.docker_hub_username
   docker_hub_access_token = var.docker_hub_access_token
+
+  services = ["api", "frontend", "ml-workflow", "mlflow"]
 }
 
 module "bastion" {

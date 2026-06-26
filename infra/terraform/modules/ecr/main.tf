@@ -25,7 +25,7 @@ resource "aws_ecr_pull_through_cache_rule" "ecr_public" {
 }
 
 resource "aws_ecr_repository" "repos" {
-  for_each = toset(["api", "ml-workflow", "frontend"])
+  for_each = toset(var.services)
 
   name                 = "${var.name_prefix}/${each.key}"
   image_tag_mutability = "MUTABLE"
