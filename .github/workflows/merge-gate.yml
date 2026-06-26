@@ -3,6 +3,7 @@ name: merge-gate
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   id-token: write
