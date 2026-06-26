@@ -17,6 +17,6 @@ patches:
       kind: ServiceAccount
       name: ml-workflow
 images:
-  - name: REPLACE_WITH_ECR_WORKFLOW_URL
-    newName: REPLACE_WITH_ECR_WORKFLOW_URL
+  - name: REPLACE_WITH_ECR_ML_WORKFLOW_URL
+    newName: REPLACE_WITH_ECR_ML_WORKFLOW_URL
     newTag: latest

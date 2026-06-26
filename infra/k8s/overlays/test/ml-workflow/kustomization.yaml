@@ -17,6 +17,6 @@ patches:
     kind: ServiceAccount
     name: ml-workflow
 images:
-- name: REPLACE_WITH_ECR_WORKFLOW_URL
+- name: REPLACE_WITH_ECR_ML_WORKFLOW_URL
   newName: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-test/ml-workflow
   newTag: a3f1c17
