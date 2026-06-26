@@ -2,19 +2,19 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: mlflow
 resources:
-  - ../../../base/mlflow
+- ../../../base/mlflow
 patches:
-  - patch: |-
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        name: mlflow
-        annotations:
-          eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-mlflow-role
-    target:
-      kind: ServiceAccount
+- patch: |-
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
       name: mlflow
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::897913033200:role/weather-forecast-ai-test-mlflow-role
+  target:
+    kind: ServiceAccount
+    name: mlflow
 images:
-  - name: REPLACE_WITH_ECR_MLFLOW_URL
-    newName: REPLACE_WITH_ECR_MLFLOW_URL
-    newTag: latest
+- name: REPLACE_WITH_ECR_MLFLOW_URL
+  newName: 897913033200.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-test/mlflow
+  newTag: 3c148e6
