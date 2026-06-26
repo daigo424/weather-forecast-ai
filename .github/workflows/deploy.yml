@@ -97,7 +97,7 @@ jobs:
         id: img
         run: |
           echo "ecr_base=${{ steps.account.outputs.id }}.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "tag=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Build and push ${{ matrix.service }}
         run: |
@@ -153,7 +153,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          TAG="${GITHUB_SHA::7}"
+          TAG="$GITHUB_SHA"
           BRANCH="deploy/${{ inputs.environment }}/image-tags-$TAG"
 
           git config user.name "github-actions[bot]"
