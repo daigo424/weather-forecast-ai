@@ -26,6 +26,12 @@ spec:
               value: redis-master.redis.svc.cluster.local
             - name: FEAST_REPO_PATH
               value: /app/feature_store
+            - name: OPEN_METEO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-meteo-secret
+                  key: api-key
+                  optional: true
           resources:
             requests:
               cpu: 200m
