@@ -14,3 +14,7 @@ patches:
     target:
       kind: ServiceAccount
       name: mlflow
+images:
+  - name: REPLACE_WITH_ECR_MLFLOW_URL
+    newName: REPLACE_WITH_ECR_MLFLOW_URL
+    newTag: latest
