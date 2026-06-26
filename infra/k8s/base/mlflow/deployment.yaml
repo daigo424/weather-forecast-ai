@@ -28,6 +28,8 @@ spec:
             - $(BACKEND_STORE_URI)
             - --default-artifact-root
             - $(ARTIFACT_ROOT)
+            - --allowed-hosts
+            - "*"
           ports:
             - containerPort: 5000
           env:
