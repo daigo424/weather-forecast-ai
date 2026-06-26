@@ -225,8 +225,10 @@ jobs:
             -c "SELECT 'CREATE DATABASE mlflow' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'mlflow')\gexec" \
             -c "SELECT 'CREATE DATABASE feast'  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'feast')\gexec"
 
-          kubectl wait pod/db-init --for=condition=Complete --timeout=60s || true
-          kubectl delete pod db-init --ignore-not-found=true
+          kubectl wait pod/db-init \
+            --for=jsonpath='{.status.phase}'=Succeeded \
+            --timeout=120s || { kubectl logs db-init -n default; kubectl delete pod db-init -n default --ignore-not-found=true; exit 1; }
+          kubectl delete pod db-init -n default --ignore-not-found=true
 
       - name: Create feast-secret
         if: github.event.inputs.compute_enabled == 'true'
