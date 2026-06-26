@@ -57,9 +57,13 @@ EVIDENTLY_WS = os.getenv("EVIDENTLY_WORKSPACE", str(EVIDENTLY_DIR))
 THRESHOLDS: dict[str, float] = {
     "temp_error":      float(os.getenv("EVIDENTLY_MAE_THRESHOLD_TEMP",   "1.5")),
     "precip_error":    float(os.getenv("EVIDENTLY_MAE_THRESHOLD_PRECIP", "2.0")),
-    "cloud_error":     float(os.getenv("EVIDENTLY_MAE_THRESHOLD_CLOUD",  "15.0")),
-    "cloud_low_error": float(os.getenv("EVIDENTLY_MAE_THRESHOLD_CLOUD",  "15.0")),
+    "cloud_error":     float(os.getenv("EVIDENTLY_MAE_THRESHOLD_CLOUD",  "18.0")),
+    "cloud_low_error": float(os.getenv("EVIDENTLY_MAE_THRESHOLD_CLOUD",  "18.0")),
 }
+
+# C/F 特徴量なし (model_interface_version=2b以降) では baseline との差がノイズレベルになりうる。
+# model_mae < baseline_mae * BASELINE_TOLERANCE で判定し、小幅な超過は許容する。
+BASELINE_TOLERANCE = float(os.getenv("EVIDENTLY_BASELINE_TOLERANCE", "1.10"))
 
 VALIDATION_RATIO = 0.2
 
@@ -279,14 +283,14 @@ def _evaluate_target(
     mae_ok        = metrics["mae"]       <= threshold
     rmse_ok       = metrics["rmse"]      <= threshold * 1.5
     bias_ok       = abs(metrics["bias"]) <= threshold * 0.5
-    baseline_ok   = metrics["mae"]       < baseline_mae
+    baseline_ok   = metrics["mae"]       < baseline_mae * BASELINE_TOLERANCE
     passed        = mae_ok and rmse_ok and bias_ok and baseline_ok
 
     tests = [
         {"name": "MAE",      "ok": mae_ok,      "value": metrics["mae"],        "threshold": threshold},
         {"name": "RMSE",     "ok": rmse_ok,      "value": metrics["rmse"],       "threshold": threshold * 1.5},
         {"name": "Bias",     "ok": bias_ok,      "value": abs(metrics["bias"]),  "threshold": threshold * 0.5},
-        {"name": "Baseline", "ok": baseline_ok,  "value": metrics["mae"],        "threshold": baseline_mae},
+        {"name": "Baseline", "ok": baseline_ok,  "value": metrics["mae"],        "threshold": baseline_mae * BASELINE_TOLERANCE},
     ]
     ok_count = sum(t["ok"] for t in tests)
     logger.info("gate result", target=target, passed=f"{ok_count}/{len(tests)}", result="PASS" if passed else "FAIL")

@@ -3,4 +3,4 @@
 #   - 各 Docker イメージはビルド時点のこのファイルの値を使用する（env var による上書き不要）
 #   - 特徴量パス（model_interface_version={N}）と Feast FeatureView 名にも使用する
 #   - Blue/Green: 異なる interface_version を持つ 2 イメージを並行稼働させることで実現
-model_interface_version: 1
+model_interface_version: 2b

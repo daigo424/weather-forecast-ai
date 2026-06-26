@@ -124,7 +124,7 @@ def get_historical_comparison(location: str = "tokyo", days: int = 7) -> dict:
             df[error_key] = df[actual_col] - df[forecast_col]
 
     # ラグ / ローリング特徴量を含む全特徴量を構築
-    df = build_features(df, is_inference=False)
+    df = build_features(df)
 
     loaded = _get_model(location)
     weather_model = loaded.unwrap_python_model()

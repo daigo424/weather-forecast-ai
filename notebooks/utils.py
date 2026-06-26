@@ -123,8 +123,8 @@ def _diff_cols(s: pd.Series, col: str, periods: list[int]) -> dict[str, pd.Serie
     return {f"{col}_diff_{p}h": s.diff(p) for p in periods}
 
 
-def build_features(df: pd.DataFrame, is_inference: bool = False) -> pd.DataFrame:
-    """学習・推論共通の特徴量生成。src/packages/feature_engineering.py と同一ロジック。"""
+def build_features(df: pd.DataFrame) -> pd.DataFrame:
+    """学習・推論共通の特徴量生成。Groups A, B, D, E のみ使用。src/packages/feature_engineering.py と同一ロジック。"""
     df = df.sort_values("datetime").reset_index(drop=True).copy()
     dt = df["datetime"].dt
     new_cols: dict[str, pd.Series] = {}
@@ -143,16 +143,6 @@ def build_features(df: pd.DataFrame, is_inference: bool = False) -> pd.DataFrame
         new_cols["is_day"] = df["forecast_is_day"]
     else:
         new_cols["is_day"] = ((dt.hour >= 6) & (dt.hour < 18)).astype(int)
-
-    # C. 誤差ラグ・ローリング（学習時のみ）
-    if not is_inference:
-        for ecol in [c for c in df.columns if c.endswith("_error")]:
-            new_cols.update(_lag_cols(df[ecol], ecol, _ERROR_LAG_LAGS))
-            shifted = df[ecol].shift(1)
-            for w in _ERROR_LAG_WINDOWS:
-                r = shifted.rolling(w, min_periods=max(1, w // 2))
-                new_cols[f"{ecol}_rolling_mean_{w}h"] = r.mean()
-                new_cols[f"{ecol}_rolling_std_{w}h"]  = r.std()
 
     # D. 予報値の時系列変化（予報ブレ）
     # forecast_pressure_msl は除外 — E 群の pressure_trend_*h と同値になるため
@@ -203,22 +193,6 @@ def build_features(df: pd.DataFrame, is_inference: bool = False) -> pd.DataFrame
 
     if "forecast_cape" in df.columns:
         new_cols["cape_log"] = np.log1p(df["forecast_cape"].clip(lower=0))
-
-    # F. 実値の直近観測ラグ（学習時のみ）
-    if not is_inference:
-        for acol in ["actual_temperature_2m", "actual_precipitation", "actual_cloud_cover"]:
-            if acol in df.columns:
-                new_cols.update(_lag_cols(df[acol], acol, [1, 3, 6]))
-                new_cols.update(_rolling_cols(df[acol], acol, [3, 6, 12], ["mean"]))
-
-        if "actual_temperature_2m" in df.columns and "forecast_temperature_2m" in df.columns:
-            temp_bias = df["actual_temperature_2m"] - df["forecast_temperature_2m"]
-            new_cols["temp_bias_instant"] = temp_bias
-            shifted_bias = temp_bias.shift(1)
-            for w in [6, 12, 24]:
-                new_cols[f"temp_bias_instant_rolling_mean_{w}h"] = (
-                    shifted_bias.rolling(w, min_periods=max(1, w // 2)).mean()
-                )
 
     new_df = pd.DataFrame(new_cols, index=df.index)
     new_df = new_df.dropna(axis=1, how="all")
