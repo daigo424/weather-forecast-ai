@@ -135,7 +135,7 @@ jobs:
           git add infra/k8s/
           git diff --staged --quiet && echo "No placeholder changes" && exit 0
 
-          BRANCH="chore/fill-k8s-placeholders-${ENV}-${GITHUB_SHA::7}"
+          BRANCH="chore/fill-k8s-placeholders-${ENV}-${GITHUB_SHA}"
           git checkout -b "$BRANCH"
           git commit -m "chore(${ENV}): fill K8s placeholders from Terraform outputs"
           git push --force origin "$BRANCH"
