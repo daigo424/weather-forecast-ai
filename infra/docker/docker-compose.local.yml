@@ -152,7 +152,7 @@ services:
   streamlit:
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile.streamlit
+      dockerfile: infra/docker/Dockerfile.frontend
     container_name: streamlit
     depends_on:
       api:
