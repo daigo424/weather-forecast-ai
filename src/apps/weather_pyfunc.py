@@ -87,18 +87,6 @@ class WeatherForecastPyfunc(mlflow.pyfunc.PythonModel):
         except Exception:
             pass
 
-        # Feast Online Store を初期化（失敗しても推論は続行する）
-        self._feast_store = None
-        try:
-            from feast import FeatureStore
-            from packages.config import FEAST_REPO_PATH
-            if FEAST_REPO_PATH:
-                self._feast_store = FeatureStore(repo_path=FEAST_REPO_PATH)
-        except Exception as e:
-            # print を維持: pyfunc は MLflow がシリアライズして別環境でロードするため、
-            # packages.logger への依存がサービング環境で解決できないリスクがある
-            print(f"[pyfunc] Feast unavailable, error lags will be 0: {e}")
-
     def predict(
         self,
         context: mlflow.pyfunc.PythonModelContext,
@@ -106,26 +94,7 @@ class WeatherForecastPyfunc(mlflow.pyfunc.PythonModel):
     ) -> pd.DataFrame:
         from packages.feature_engineering import build_features
 
-        feat_df = build_features(model_input.copy(), is_inference=True)
-
-        # Feast Online Store から誤差ラグ特徴量を注入
-        # Online Store が空・未起動の場合は 0 のまま（モデルの fallback 動作）
-        if self._feast_store is not None:
-            try:
-                location = str(model_input.get("location_name", pd.Series(["tokyo"])).iloc[0])
-                feature_service = self._feast_store.get_feature_service(
-                    f"weather_features_v{self._model_interface_version}"
-                )
-                online = self._feast_store.get_online_features(
-                    features=feature_service,
-                    entity_rows=[{"location_name": location}],
-                ).to_dict()
-                for col, vals in online.items():
-                    if col != "location_name" and vals[0] is not None:
-                        feat_df[col] = float(vals[0])
-            except Exception as e:
-                # print を維持: 同上（pyfunc サービング環境での外部依存リスク）
-                print(f"[pyfunc] Feast fetch failed, using 0 for error lags: {e}")
+        feat_df = build_features(model_input.copy())
 
         result = model_input[["datetime", "step_hour"]].copy()
 
