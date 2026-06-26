@@ -69,7 +69,8 @@ LGBM_N_JOBS = _e.lgbm_n_jobs
 # 過去の予報精度表示・学習カットオフ共通定数
 # 学習データの上限は「比較期間の開始日の前日まで」にすることでデータリークを防ぐ
 # ----------------------------------------------------------------
-ERA5_DELAY_DAYS            = 5  # ERA5 実績データの遅延日数
+ERA5_DELAY_DAYS            = 5  # ERA5 再解析の公開遅延日数（今日から約5日前まで取得可能）
+NWP_DELAY_DAYS             = 1  # NWP historical-forecast-api の遅延日数（昨日まで確実に取得可能）
 HISTORICAL_COMPARISON_DAYS = 7  # 過去の予報精度セクションの表示日数
 
 # train_pipeline の TARGET_COLS キーと WeatherForecastPyfunc 内モデルキーの対応
