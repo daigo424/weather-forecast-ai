@@ -266,8 +266,7 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           RDS_ENDPOINT=$(terraform output -raw rds_endpoint)
-          DB_NAME=$(terraform output -raw rds_db_name)
-          DATABASE_URL="postgresql://appuser:${DB_PASSWORD}@${RDS_ENDPOINT}/${DB_NAME}?sslmode=require"
+          DATABASE_URL="postgresql://appuser:${DB_PASSWORD}@${RDS_ENDPOINT}/mlflow?sslmode=require"
           ARTIFACT_ROOT="s3://$(terraform output -raw ml_data_bucket_name)/mlflow-artifacts"
 
           kubectl create namespace mlflow --dry-run=client -o yaml | kubectl apply -f -
