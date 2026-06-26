@@ -51,6 +51,12 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: OPEN_METEO_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: open-meteo-secret
+                key: api-key
+                optional: true
           - name: LOG_FORMAT
             value: json
         resources:
@@ -80,6 +86,12 @@ spec:
               configMapKeyRef:
                 name: ml-workflow-env
                 key: bucket_name
+          - name: OPEN_METEO_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: open-meteo-secret
+                key: api-key
+                optional: true
           - name: LOG_FORMAT
             value: json
         resources:
