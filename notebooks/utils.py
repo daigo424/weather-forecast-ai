@@ -40,7 +40,6 @@ _FEAT_EXCLUDE = {
     "location_name",
     "actual_latitude", "actual_longitude",
     "requested_latitude", "requested_longitude",
-    "temp_bias_instant",
 }
 
 # ---------- データロード ----------
@@ -97,26 +96,10 @@ def missing_summary(df: pd.DataFrame, label: str) -> None:
 # ---------- 特徴量生成 ----------
 # src/packages/feature_engineering.py と同一ロジック。ノートブック間で共有する。
 
-_ERROR_LAG_LAGS: list[int]    = [1, 3, 6, 12, 24, 48]
-_ERROR_LAG_WINDOWS: list[int] = [6, 12, 24, 48]
-
 
 def _sin_cos(s: pd.Series, period: float) -> tuple[pd.Series, pd.Series]:
     a = 2 * np.pi * s / period
     return np.sin(a), np.cos(a)
-
-
-def _lag_cols(s: pd.Series, col: str, lags: list[int]) -> dict[str, pd.Series]:
-    return {f"{col}_lag_{lag}h": s.shift(lag) for lag in lags}
-
-
-def _rolling_cols(s: pd.Series, col: str, windows: list[int], funcs: list[str]) -> dict[str, pd.Series]:
-    result = {}
-    for w in windows:
-        r = s.rolling(w, min_periods=max(1, w // 2))
-        for f in funcs:
-            result[f"{col}_rolling_{f}_{w}h"] = getattr(r, f)()
-    return result
 
 
 def _diff_cols(s: pd.Series, col: str, periods: list[int]) -> dict[str, pd.Series]:
@@ -205,10 +188,7 @@ def get_feat_cols(df: pd.DataFrame, error_targets: list[str] | None = None) -> l
     """モデル学習用の特徴量カラムを抽出する。raw_actual・ラベル・メタを除外する。"""
     if error_targets is None:
         error_targets = ERROR_COLS
-    raw_actual = {
-        c for c in df.columns
-        if c.startswith("actual_") and "_lag_" not in c and "_rolling_" not in c
-    }
+    raw_actual = {c for c in df.columns if c.startswith("actual_")}
     exclude = _FEAT_EXCLUDE | set(error_targets)
     return [
         c for c in df.columns

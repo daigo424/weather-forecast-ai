@@ -9,35 +9,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# Feast スキーマ定義用に保持（feature_store/feature_views.py から参照）
-# model_interface_version=2b 以降はこれらの列は build_features() で生成しない
-_ERROR_TYPES: list[str] = ["temp_error", "precip_error", "cloud_error", "cloud_low_error"]
-_ERROR_LAG_LAGS: list[int] = [1, 3, 6, 12, 24, 48]
-_ERROR_LAG_WINDOWS: list[int] = [6, 12, 24, 48]
-
-ERROR_LAG_COLS: list[str] = (
-    [f"{e}_lag_{l}h"            for e in _ERROR_TYPES for l in _ERROR_LAG_LAGS]
-    + [f"{e}_rolling_mean_{w}h" for e in _ERROR_TYPES for w in _ERROR_LAG_WINDOWS]
-    + [f"{e}_rolling_std_{w}h"  for e in _ERROR_TYPES for w in _ERROR_LAG_WINDOWS]
-)  # 4 targets × 14 cols = 56 features
-
 
 def _sin_cos(s: pd.Series, period: float) -> tuple[pd.Series, pd.Series]:
     a = 2 * np.pi * s / period
     return np.sin(a), np.cos(a)
-
-
-def _lag_cols(s: pd.Series, col: str, lags: list[int]) -> dict[str, pd.Series]:
-    return {f"{col}_lag_{lag}h": s.shift(lag) for lag in lags}
-
-
-def _rolling_cols(s: pd.Series, col: str, windows: list[int], funcs: list[str]) -> dict[str, pd.Series]:
-    result = {}
-    for w in windows:
-        r = s.rolling(w, min_periods=max(1, w // 2))
-        for f in funcs:
-            result[f"{col}_rolling_{f}_{w}h"] = getattr(r, f)()
-    return result
 
 
 def _diff_cols(s: pd.Series, col: str, periods: list[int]) -> dict[str, pd.Series]:

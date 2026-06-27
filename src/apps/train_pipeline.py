@@ -236,15 +236,9 @@ def build_and_save_features(
 # ============================================================
 
 def _get_feature_cols(df: pd.DataFrame, target: str) -> list[str]:
-    raw_actual = {
-        c for c in df.columns
-        if c.startswith("actual_")
-        and "_lag_" not in c
-        and "_rolling_" not in c
-    }
+    raw_actual = {c for c in df.columns if c.startswith("actual_")}
     exclude = EXCLUDE_FROM_FEATURES | set(TARGET_COLS.keys()) | raw_actual | {
         "precip_flag_actual", "precip_flag_fc", "precip_flag_error",
-        "temp_bias_instant",
     }
     return [
         c for c in df.columns

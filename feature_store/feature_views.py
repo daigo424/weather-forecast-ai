@@ -20,7 +20,16 @@ from feast.types import Float32
 from feast.value_type import ValueType
 
 from packages.config import FEATURE_DIR as _FEATURE_DIR
-from packages.feature_engineering import ERROR_LAG_COLS
+
+# 誤差ラグ特徴量のスキーマ定義（model_interface_version=2b以降は features.parquet に含まれない）
+_ERROR_TYPES      = ["temp_error", "precip_error", "cloud_error", "cloud_low_error"]
+_ERROR_LAG_LAGS   = [1, 3, 6, 12, 24, 48]
+_ERROR_LAG_WINDOWS = [6, 12, 24, 48]
+ERROR_LAG_COLS: list[str] = (
+    [f"{e}_lag_{l}h"            for e in _ERROR_TYPES for l in _ERROR_LAG_LAGS]
+    + [f"{e}_rolling_mean_{w}h" for e in _ERROR_TYPES for w in _ERROR_LAG_WINDOWS]
+    + [f"{e}_rolling_std_{w}h"  for e in _ERROR_TYPES for w in _ERROR_LAG_WINDOWS]
+)
 
 _project_root = Path(__file__).parent.parent
 with open(_project_root / "deployment" / "versions.yaml") as _f:

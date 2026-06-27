@@ -18,7 +18,6 @@ from feature_store.feature_views import (
     location_entity,
     error_lag_fv,
     weather_features_service,
-    ERROR_LAG_COLS,
 )
 
 logger = AppLogger("materialize_features")
@@ -78,7 +77,7 @@ def run(location: str = "tokyo") -> None:
     store.apply([location_entity, error_lag_fv, weather_features_service])
     logger.info("feast apply: registry updated", interface=iv)
 
-    lag_cols = [c for c in ERROR_LAG_COLS if c in df.columns]
+    lag_cols = [c for c in df.columns if "_lag_" in c or "_rolling_" in c]
     if not lag_cols:
         logger.warning("no lag columns found — skipping")
         return
