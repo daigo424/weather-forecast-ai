@@ -17,43 +17,13 @@
 
 天気コード（WMO）は NWP からそのまま使うのではなく、補正後の値（雲量・降水量・気温）と CAPE を使って推論時にルールベースで再生成します。これにより、表示される天気アイコンが補正済み予報と整合します。
 
-## アーキテクチャ
+## MLOps パイプライン
 
-```
-Open-Meteo Archive API               Open-Meteo Previous-Runs API
-（ERA5 実測値）                        （過去 NWP 予報）
-       │                                       │
-       ▼                                       ▼
-  01_raw/actual/                         01_raw/forecast/
-       │                                       │
-       ▼                                       ▼
-  02_processed/actual/                   02_processed/forecast/
-                        │           │
-                        └─── 結合 ──┘
-                               │
-                    誤差 = 実測値 − NWP
-                               │
-                    build_features() [ラグ/ローリング]
-                               │
-                        03_features/
-                               │
-                    LightGBM × 4 モデル
-                    （補正対象ごとに 1 本）
-                               │
-                    WeatherForecastPyfunc
-                    （4 モデルをまとめてバンドル）
-                               │
-                     MLflow モデルレジストリ
-                      ┌────────┴────────┐
-                      ▼                 ▼
-              Feast（Redis）          FastAPI
-          [誤差ラグ特徴量]         /forecast /today
-                      │              /model-info
-                      └────────┬────────┘
-                               ▼
-                           Streamlit
-                      （7 日間ダッシュボード）
-```
+![mlops-pipeline](docs/mlops-pipeline.drawio.png)
+
+## インフラ構成
+
+![infrastructure](docs/infrastructure.drawio.png)
 
 ### サービス一覧
 

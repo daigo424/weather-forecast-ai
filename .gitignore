@@ -8,6 +8,7 @@ tmp/
 data/mlruns/
 data/mlflow.db
 *.egg-info
+*.bkp
 
 .*/
 !.github/
