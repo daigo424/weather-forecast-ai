@@ -1,0 +1,289 @@
+<mxfile host="Electron">
+  <diagram id="81sedwx12JRrXQfTjfmr" name="ページ-1">
+    <mxGraphModel dx="1250" dy="841" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0" adaptiveColors="auto">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;" value="Weather Forecast AI — MLOps パイプライン" vertex="1">
+          <mxGeometry height="28" width="1000" x="260" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;verticalAlign=top;" value="CI / CD" vertex="1">
+          <mxGeometry height="80" width="1460" x="40" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="&lt;b&gt;GitHub Actions&lt;/b&gt;&lt;br&gt;Dockerfile build&lt;br&gt;image push to ECR" vertex="1">
+          <mxGeometry height="48" width="155" x="295" y="74" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" value="&lt;b&gt;ECR&lt;/b&gt;&lt;br&gt;api / frontend&lt;br&gt;ml-workflow / mlflow" vertex="1">
+          <mxGeometry height="48" width="150" x="530" y="74" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;ArgoCD&lt;/b&gt;&lt;br&gt;GitOps sync&lt;br&gt;(App of Apps)" vertex="1">
+          <mxGeometry height="48" width="140" x="760" y="74" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;EKS Rolling Update&lt;/b&gt;&lt;br&gt;新イメージで Pod 入替&lt;br&gt;Blue/Green 切替" vertex="1">
+          <mxGeometry height="48" width="175" x="980" y="74" as="geometry" />
+        </mxCell>
+        <mxCell id="15" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="12" value="docker push">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" edge="1" parent="1" source="12" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="13" value="manifest update">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="17" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;" target="14" value="k8s apply">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f9ffe0;strokeColor=#82b366;fontStyle=1;fontSize=12;verticalAlign=top;" value="Argo Workflows CronWorkflow  (@daily 01:00 JST)" vertex="1">
+          <mxGeometry height="455" width="1460" x="40" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;Open Meteo&lt;/b&gt;&lt;div&gt;&lt;b&gt;ERA5 Archive API&lt;/b&gt;&lt;br&gt;実績データ (5日遅延)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="55" width="140" x="62" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;div&gt;&lt;b&gt;Open Meteo&lt;/b&gt;&lt;b&gt;&lt;/b&gt;&lt;/div&gt;&lt;b&gt;Previous Runs API&lt;/b&gt;&lt;br&gt;過去NWP予報" vertex="1">
+          <mxGeometry height="55" width="140" x="62" y="272" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;fetch_actual&lt;/b&gt;&lt;br&gt;ERA5 取得" vertex="1">
+          <mxGeometry height="55" width="130" x="252" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;fetch_forecast&lt;/b&gt;&lt;br&gt;PrevRuns 取得" vertex="1">
+          <mxGeometry height="55" width="130" x="252" y="272" as="geometry" />
+        </mxCell>
+        <mxCell id="25" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="&lt;b&gt;S3 bucket&amp;nbsp;&lt;/b&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;ml-data&lt;/b&gt;&lt;div&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;/01_raw&lt;/b&gt;&lt;div&gt;Parquet (year/month/day)&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="66" width="140" x="432" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;process_actual&lt;/b&gt;&lt;br&gt;前処理・正規化" vertex="1">
+          <mxGeometry height="55" width="130" x="622" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;process_forecast&lt;/b&gt;&lt;br&gt;前処理・正規化" vertex="1">
+          <mxGeometry height="55" width="130" x="622" y="272" as="geometry" />
+        </mxCell>
+        <mxCell id="28" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="&lt;div&gt;&lt;b&gt;S3 bucket &lt;/b&gt;&lt;b style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;ml-data&lt;/b&gt;&lt;b&gt;&lt;/b&gt;&lt;/div&gt;&lt;b&gt;/02_processed&lt;/b&gt;&lt;br&gt;クリーニング済み Parquet" vertex="1">
+          <mxGeometry height="66" width="140" x="802" y="212" as="geometry" />
+        </mxCell>
+        <mxCell id="29" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;" value="train_pipeline&lt;br&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;特徴量生成 (Groups A-F)&lt;/span&gt;&lt;br&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;LightGBM×4 学習&lt;/span&gt;" vertex="1">
+          <mxGeometry height="75" width="185" x="992" y="207" as="geometry" />
+        </mxCell>
+        <mxCell id="29b" parent="1" style="text;html=1;strokeColor=#d6b656;fillColor=#fffde7;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" value="A: NWP生予報  B: 時間コンテキスト&lt;br&gt;C: 誤差ラグ D: 予報変化&lt;br&gt;E: 大気パターン  F: 実値ラグ" vertex="1">
+          <mxGeometry height="42" width="185" x="992" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="&lt;div&gt;&lt;b&gt;S3 bucket &lt;/b&gt;&lt;b style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;ml-data&lt;/b&gt;&lt;/div&gt;&lt;b&gt;/03_features&lt;/b&gt;&lt;br&gt;location/{loc}&lt;br&gt;model_interface_version={N}&lt;br&gt;data_version={N}&lt;br&gt;features.parquet" vertex="1">
+          <mxGeometry height="95" width="150" x="1310" y="197" as="geometry" />
+        </mxCell>
+        <mxCell id="ccqik66h7SUsecRU7OBy-94" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;curved=0;dashed=1;fillColor=#ffe6cc;strokeColor=default;" target="35">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ccqik66h7SUsecRU7OBy-95" connectable="0" parent="ccqik66h7SUsecRU7OBy-94" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="レポート" vertex="1">
+          <mxGeometry relative="1" x="-0.0991" y="2" as="geometry">
+            <mxPoint y="-2" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;evaluate_and_promote&lt;/b&gt;&lt;br&gt;Evidently 品質評価&lt;br&gt;MAE / RMSE / Baseline" vertex="1">
+          <mxGeometry height="75" width="185" x="992" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=11;" value="MLflow&lt;span style=&quot;font-weight: normal;&quot;&gt;&lt;br&gt;Model Registry&lt;br&gt;+ Artifacts&lt;/span&gt;" vertex="1">
+          <mxGeometry height="100" width="150" x="1330" y="317.5" as="geometry" />
+        </mxCell>
+        <mxCell id="33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;materialize_features&lt;/b&gt;&lt;br&gt;feast apply&lt;br&gt;+ /03_features → Redis" vertex="1">
+          <mxGeometry height="75" width="185" x="992" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="34" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="&lt;b&gt;Redis&lt;/b&gt;&lt;br&gt;Online Feature Store&lt;br&gt;誤差ラグ C群" vertex="1">
+          <mxGeometry height="100" width="150" x="1330" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="&lt;b&gt;Evidently&lt;/b&gt;&lt;br&gt;HTML Report&lt;br&gt;MAE/RMSE/Drift" vertex="1">
+          <mxGeometry height="70" width="130" x="768" y="333" as="geometry" />
+        </mxCell>
+        <mxCell id="36" parent="1" style="text;html=1;strokeColor=#b85450;fillColor=#ffe6e6;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" value="評価失敗 → タグ更新なし → materialize スキップ (Blue Pod 継続)" vertex="1">
+          <mxGeometry height="75" width="130" x="768" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="40" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f0ff;strokeColor=#9673a6;fontStyle=1;fontSize=12;verticalAlign=top;" value="推論・サービング (常時稼働)" vertex="1">
+          <mxGeometry height="120" width="920" x="40" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="41" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;NWP Forecast API&lt;/b&gt;&lt;br&gt;api.open-meteo.com&lt;br&gt;1週間予報" vertex="1">
+          <mxGeometry height="70" width="140" x="62" y="658" as="geometry" />
+        </mxCell>
+        <mxCell id="42" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" value="&lt;font face=&quot;Helvetica&quot;&gt;FastAPI&lt;br&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;/predict&lt;br&gt;/historical-comparison&lt;/span&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="80" width="170" x="262" y="653" as="geometry" />
+        </mxCell>
+        <mxCell id="43" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;Streamlit&lt;/b&gt;&lt;br&gt;天気予報ダッシュボード" vertex="1">
+          <mxGeometry height="70" width="150" x="492" y="658" as="geometry" />
+        </mxCell>
+        <mxCell id="44" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="ユーザー" vertex="1">
+          <mxGeometry height="55" width="85" x="715" y="666" as="geometry" />
+        </mxCell>
+        <mxCell id="50" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff0f0;strokeColor=#b85450;fontStyle=1;fontSize=12;verticalAlign=top;" value="モニタリング" vertex="1">
+          <mxGeometry height="105" width="920" x="40" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="51" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="&lt;b&gt;Evidently UI&lt;/b&gt;&lt;br&gt;MAE/RMSE/Drift" vertex="1">
+          <mxGeometry height="62" width="145" x="65" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="52" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="&lt;b&gt;Prometheus + Grafana&lt;/b&gt;&lt;br&gt;kube-prometheus-stack&lt;br&gt;Pushgateway (学習メトリクス)" vertex="1">
+          <mxGeometry height="62" width="185" x="265" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="53" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="&lt;b&gt;Glue + Athena&lt;/b&gt;&lt;br&gt;Argo Workflow logs&lt;br&gt;S3 → クエリ分析" vertex="1">
+          <mxGeometry height="62" width="155" x="510" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="60" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=13;verticalAlign=top;" value="&lt;b&gt;バージョン管理戦略&lt;/b&gt;" vertex="1">
+          <mxGeometry height="260" width="490" x="1010" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="61" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" value="model_interface_version" vertex="1">
+          <mxGeometry height="28" width="200" x="1025" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="62" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;" value="モデルの本数・入出力スキーマ・特徴量カラム変更時に、バージョン名を付ける。&lt;div&gt;例）1, 2, 3, または、2a, 2bなど、&lt;br&gt;&lt;div&gt;deployment/versions.yaml + MODEL_INTERFACE_VERSION env var で管理。&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="460" x="1025" y="677" as="geometry" />
+        </mxCell>
+        <mxCell id="63" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" value="training_version" vertex="1">
+          <mxGeometry height="28" width="200" x="1025" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="64" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;" value="自動採番。同一 model_interface_version スコープで max+1。&lt;div&gt;interface 変更時は 1 にリセット。MLflow モデルバージョンタグで管理。&lt;/div&gt;" vertex="1">
+          <mxGeometry height="35" width="460" x="1025" y="757" as="geometry" />
+        </mxCell>
+        <mxCell id="65" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;" value="evaluated_successful タグ" vertex="1">
+          <mxGeometry height="28" width="200" x="1025" y="802" as="geometry" />
+        </mxCell>
+        <mxCell id="66" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;" value="学習時: &quot;0&quot; → 評価合格時: &quot;1&quot;。&lt;div&gt;推論 Pod は evaluated_successful=1 の max(training_version) を選択。&lt;/div&gt;&lt;div&gt;失敗時は旧 Pod が継続 (Blue/Green)。&lt;/div&gt;" vertex="1">
+          <mxGeometry height="18" width="460" x="1025" y="829" as="geometry" />
+        </mxCell>
+        <mxCell id="70" edge="1" parent="1" source="21" style="edgeStyle=orthogonalEdgeStyle;" target="23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="71" edge="1" parent="1" source="22" style="edgeStyle=orthogonalEdgeStyle;" target="24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="72" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;" target="25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="73" edge="1" parent="1" source="24" style="edgeStyle=orthogonalEdgeStyle;" target="25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="74" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;" target="26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="75" edge="1" parent="1" source="25" style="edgeStyle=orthogonalEdgeStyle;" target="27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="76" edge="1" parent="1" source="26" style="edgeStyle=orthogonalEdgeStyle;" target="28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="77" edge="1" parent="1" source="27" style="edgeStyle=orthogonalEdgeStyle;" target="28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="78" edge="1" parent="1" source="28" style="edgeStyle=orthogonalEdgeStyle;" target="29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="79" edge="1" parent="1" source="29" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;fillColor=#ffe6cc;strokeColor=default;dashed=1;" target="30" value="features.parquet 書込">
+          <mxGeometry relative="1" x="0.0075" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="80" edge="1" parent="1" source="29" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;dashed=1;strokeColor=default;" target="32" value="model register&#xa;training_version タグ">
+          <mxGeometry relative="1" x="0.061" y="10" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1210" y="270" />
+              <mxPoint x="1210" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="81" edge="1" parent="1" source="29" style="edgeStyle=orthogonalEdgeStyle;" target="31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="82" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;dashed=1;strokeColor=default;fillColor=#ffe6cc;" target="32" value="evaluated_successful=1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="83" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="36" value="評価失敗">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1030" y="449" />
+              <mxPoint x="946" y="449" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="84" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;strokeColor=default;" target="33" value="評価合格">
+          <mxGeometry relative="1" x="-0.4545" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1085" y="420" />
+              <mxPoint x="1085" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="85" edge="1" parent="1" source="30" style="edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;dashed=1;" target="33">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1385" y="310" />
+              <mxPoint x="1290" y="310" />
+              <mxPoint x="1290" y="498" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="86" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;dashed=1;" target="34" value="Feast write">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1254" y="510" />
+              <mxPoint x="1254" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="87" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;strokeColor=default;dashed=1;" target="42" value="起動時ロード">
+          <mxGeometry relative="1" x="0.1574" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="1360" y="440" />
+              <mxPoint x="347" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="88" edge="1" parent="1" source="34" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;strokeColor=#9673a6;dashed=1;" target="42" value="Feast get (C群)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1370" y="590" />
+              <mxPoint x="390" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="89" edge="1" parent="1" source="41" style="edgeStyle=orthogonalEdgeStyle;" target="42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="90" edge="1" parent="1" source="42" style="edgeStyle=orthogonalEdgeStyle;" target="43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="91" edge="1" parent="1" source="44" style="edgeStyle=orthogonalEdgeStyle;" target="43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="92" edge="1" parent="1" source="35" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;dashed=1;fillColor=#ffe6cc;strokeColor=default;" target="51" value="Evidently report">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="365" />
+              <mxPoint x="740" y="560" />
+              <mxPoint x="50" y="560" />
+              <mxPoint x="50" y="831" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="93" edge="1" parent="1" source="42" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;dashed=1;" target="52" value="metrics">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="347" y="790" />
+              <mxPoint x="347" y="790" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="94" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;dashed=1;" target="53" value="logs">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="510" />
+              <mxPoint x="910" y="831" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Pi8gPWyynPJ_rscAGLHE-94" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" value="&lt;b&gt;GitHub Actions&lt;/b&gt;&lt;br&gt;PR CI&lt;div&gt;evaluate Model&lt;/div&gt;" vertex="1">
+          <mxGeometry height="48" width="155" x="63" y="74" as="geometry" />
+        </mxCell>
+        <mxCell id="Pi8gPWyynPJ_rscAGLHE-95" edge="1" parent="1" source="Pi8gPWyynPJ_rscAGLHE-94" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="11" value="merge&#xa;main branch">
+          <mxGeometry relative="1" x="0.0031" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="340" y="98" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -17,43 +17,13 @@ The core idea is **NWP bias correction**: rather than predicting weather from sc
 
 Weather code (WMO) is re-derived from corrected values (cloud cover, precipitation, temperature) and CAPE at inference time — not taken from NWP directly. This ensures the displayed weather icon is consistent with the corrected forecast.
 
-## Architecture
+## MLOps-Pipeline
 
-```
-Open-Meteo Archive API               Open-Meteo Previous-Runs API
-(ERA5 actuals)                        (past NWP forecasts)
-       │                                       │
-       ▼                                       ▼
-  01_raw/actual/                         01_raw/forecast/
-       │                                       │
-       ▼                                       ▼
-  02_processed/actual/                   02_processed/forecast/
-                        │           │
-                        └─── merge ─┘
-                               │
-                    error = actual − NWP
-                               │
-                    build_features() [lag/rolling]
-                               │
-                        03_features/
-                               │
-                    LightGBM × 4 models
-                    (one per correction target)
-                               │
-                    WeatherForecastPyfunc
-                    (bundles all 4 models)
-                               │
-                     MLflow Model Registry
-                      ┌────────┴────────┐
-                      ▼                 ▼
-              Feast (Redis)          FastAPI
-          [error lag features]    /forecast /today
-                      │              /model-info
-                      └────────┬────────┘
-                               ▼
-                           Streamlit
-                      (7-day dashboard)
-```
+![mlops-pipeline](docs/mlops-pipeline.drawio.png)
+
+## Infrastructure
+
+![infrastructure](docs/infrastructure.drawio.png)
 
 ### Services
 
