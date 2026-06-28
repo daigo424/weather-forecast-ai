@@ -276,3 +276,17 @@ jobs:
             --from-literal=artifact-root="$ARTIFACT_ROOT" \
             --save-config \
             --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create open-meteo-secret
+        if: github.event.inputs.compute_enabled == 'true'
+        env:
+          OPEN_METEO_API_KEY: ${{ secrets.OPEN_METEO_API_KEY }}
+        run: |
+          for ns in argo weather; do
+            kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create secret generic open-meteo-secret \
+              --namespace "$ns" \
+              --from-literal=api-key="${OPEN_METEO_API_KEY}" \
+              --save-config \
+              --dry-run=client -o yaml | kubectl apply -f -
+          done
