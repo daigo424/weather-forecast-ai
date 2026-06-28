@@ -60,8 +60,8 @@ jobs:
 
       - name: Process raw data
         run: |
-          uv run python -m apps.process_actual_all_params
-          uv run python -m apps.process_forecast_all_params
+          uv run python -m apps.process_actual_all_params --start 2023-01-01
+          uv run python -m apps.process_forecast_all_params --start 2023-01-01
 
       - name: Train model
         run: uv run python -m apps.train_pipeline
