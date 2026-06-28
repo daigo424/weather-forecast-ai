@@ -36,8 +36,18 @@ env:
   TARGET_SERVICES: "api frontend ml-workflow mlflow"
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block prod deployment from non-main branch
+        if: github.event.inputs.environment == 'prod' && github.ref != 'refs/heads/main'
+        run: |
+          echo "prod deployment is only allowed from main branch (current: ${{ github.ref }})"
+          exit 1
+
   # input name (ml_workflow) → service name (ml-workflow) の変換は tr '_' '-' で自動処理
   prepare:
+    needs: guard
     runs-on: ubuntu-latest
     outputs:
       matrix:   ${{ steps.set.outputs.matrix }}
@@ -172,7 +182,7 @@ jobs:
               '${{ github.actor }}' \
               '${{ needs.prepare.outputs.services }}' \
               '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')" \
-            --base main \
+            --base ${{ github.ref_name }} \
             --head "$BRANCH")
 
           gh pr merge "$PR_URL" --squash --delete-branch
