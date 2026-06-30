@@ -43,7 +43,7 @@ from packages.config import (
     get_model_interface_version,
     get_lgbm_params,
 )
-from packages.feature_engineering import build_features
+from apps.predict import build_features_recursive
 from packages.logger import AppLogger
 from apps.weather_pyfunc import (
     pipeline_model_name,
@@ -217,8 +217,8 @@ def build_and_save_features(
     logger.info("applied training cutoff", cutoff=str(cutoff.date()), rows=len(df))
 
     t1 = time.time()
-    logger.info("step2: build features", rows=len(df))
-    features = build_features(df)
+    logger.info("step2: build features (recursive)", rows=len(df))
+    features = build_features_recursive(df)
     logger.info("step2 done", elapsed=round(time.time() - t1, 1), cols=len(features.columns))
 
     out_path = (
