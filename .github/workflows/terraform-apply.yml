@@ -215,6 +215,18 @@ jobs:
             password: "${ARGOCD_REPO_PASSWORD}"
           EOF
 
+          # child app の targetRevision をブランチ名に合わせて git に commit する。
+          # selfHeal=true の root-app が git から YAMLを読むため、commit しないと main に戻る。
+          find "$GITHUB_WORKSPACE/infra/k8s/apps/${ENV}" -name "*.yaml" \
+            -exec sed -i "s|targetRevision: main|targetRevision: ${{ github.ref_name }}|g" {} +
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$GITHUB_WORKSPACE/infra/k8s/apps/${ENV}/"
+          git diff --staged --quiet || {
+            git commit -m "chore(${ENV}): set ArgoCD child app targetRevision to ${{ github.ref_name }}"
+            git push origin "${{ github.ref_name }}"
+          }
+
           sed "s|targetRevision: .*|targetRevision: ${{ github.ref_name }}|" \
             "$GITHUB_WORKSPACE/infra/k8s/bootstrap/root-app-${ENV}.yaml" | kubectl apply -f -
 
