@@ -5,7 +5,7 @@
   1. fetch_data          : Open-Meteo から actual / forecast を日次取得・加工
   2. train_model         : 特徴量生成 → LightGBM 学習 → MLflow 登録
   3. evaluate_model      : Evidently AI で評価 → 合格時に evaluated_successful=1 タグを付与
-  4. materialize_features: Feast で特徴量を Redis オンラインストアに書き込み
+  4. materialize_features: no-op（オンライン特徴量なし）
 
 ※ EKS 本番では Argo Workflows で実行する。
 """
@@ -134,7 +134,7 @@ def _materialize_features(**context) -> None:
 
 with DAG(
     dag_id="weather_forecast_pipeline",
-    description="天気予報 ML パイプライン: fetch → train → evaluate → materialize",
+    description="天気予報 ML パイプライン: fetch → train → evaluate",
     default_args=default_args,
     start_date=pendulum.datetime(2025, 1, 1, tz="Asia/Tokyo"),
     schedule="@daily",

@@ -4,7 +4,6 @@
 Open-Meteo API から直接データを取得するため、常に最新の直近期間を反映する。
   - 対象期間: (today - ERA5_DELAY_DAYS - days) ～ (today - ERA5_DELAY_DAYS)
   - ERA5 は約 5 日の遅延があるため、最新 ERA5_DELAY_DAYS 日は含めない
-  - ラグ特徴量（最大 48 h）を正確に計算するため、取得開始を LAG_WARMUP_H 時間だけ遡る
 """
 from __future__ import annotations
 
@@ -25,8 +24,6 @@ from packages.config import (
     PREVIOUS_RUNS_API_URL,
 )
 from packages.feature_engineering import build_features
-
-_LAG_WARMUP_H = 48  # ラグ特徴量の最大ラグ数に合わせたウォームアップ時間
 
 # ERA5 archive で確実に取得できるパラメータ
 _ACTUAL_PARAMS = [
@@ -101,30 +98,21 @@ def get_historical_comparison(location: str = "tokyo", days: int = 7) -> dict:
 
     loc = _loc_for(location)
 
-    end         = date.today() - timedelta(days=ERA5_DELAY_DAYS)
-    start       = end - timedelta(days=days)
-    fetch_start = start - timedelta(hours=_LAG_WARMUP_H)
+    end   = date.today() - timedelta(days=ERA5_DELAY_DAYS)
+    start = end - timedelta(days=days)
 
     # ERA5 実績を取得
-    actual_df = _fetch(OPEN_METEO_API_URL, loc["lat"], loc["lon"], fetch_start, end, _ACTUAL_PARAMS)
+    actual_df = _fetch(OPEN_METEO_API_URL, loc["lat"], loc["lon"], start, end, _ACTUAL_PARAMS)
     actual_df = actual_df.add_prefix("actual_").rename(columns={"actual_datetime": "datetime"})
 
     # NWP 過去予報を取得
-    forecast_df = _fetch(PREVIOUS_RUNS_API_URL, loc["lat"], loc["lon"], fetch_start, end, _FORECAST_PARAMS)
+    forecast_df = _fetch(PREVIOUS_RUNS_API_URL, loc["lat"], loc["lon"], start, end, _FORECAST_PARAMS)
     forecast_df = forecast_df.add_prefix("forecast_").rename(columns={"forecast_datetime": "datetime"})
 
     df = pd.merge(actual_df, forecast_df, on="datetime", how="inner")
     df = df.sort_values("datetime").reset_index(drop=True)
 
-    # 誤差カラム（ラグ特徴量の計算に必要）
-    for error_key in ERROR_KEY_MAP:
-        actual_col   = _ACTUAL_COL[error_key]
-        forecast_col = _FORECAST_COL[error_key]
-        if actual_col in df.columns and forecast_col in df.columns:
-            df[error_key] = df[actual_col] - df[forecast_col]
-
-    # ラグ / ローリング特徴量を含む全特徴量を構築
-    df = build_features(df, is_inference=False)
+    df = build_features(df)
 
     loaded = _get_model(location)
     weather_model = loaded.unwrap_python_model()
@@ -148,8 +136,6 @@ def get_historical_comparison(location: str = "tokyo", days: int = 7) -> dict:
         result[f"{short}_forecast"]  = df[forecast_col].values
         result[f"{short}_corrected"] = df[forecast_col].values + correction
 
-    # ウォームアップ期間を除いて対象期間のみ返す
-    result = result[result["datetime"] >= pd.Timestamp(start)].copy()
     result["datetime"] = result["datetime"].astype(str)
 
     if result.empty:
