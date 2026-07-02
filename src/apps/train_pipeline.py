@@ -387,28 +387,30 @@ def run(location: str = "tokyo") -> dict[str, Any]:
     except Exception:
         pass
 
-    try:
-        import git as _git
-        repo = _git.Repo(search_parent_directories=True)
-        git_hash = repo.head.commit.hexsha[:7]
-    except Exception:
+    git_hash = os.getenv("GIT_COMMIT", "")[:7] or None
+    if not git_hash:
         try:
-            git_hash = subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
-            ).decode().strip()
+            import git as _git
+            repo = _git.Repo(search_parent_directories=True)
+            git_hash = repo.head.commit.hexsha[:7]
         except Exception:
-            # git CLI / gitpython が使えない環境（Airflow コンテナ等）では
-            # .git/HEAD を直接読んでコミットハッシュを取得する
             try:
-                project_root = Path(__file__).resolve().parent.parent.parent
-                head = (project_root / ".git" / "HEAD").read_text().strip()
-                if head.startswith("ref: "):
-                    sha = (project_root / ".git" / head[5:]).read_text().strip()
-                else:
-                    sha = head  # detached HEAD
-                git_hash = sha[:7]
+                git_hash = subprocess.check_output(
+                    ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+                ).decode().strip()
             except Exception:
-                git_hash = "unknown"
+                # git CLI / gitpython が使えない環境（Airflow コンテナ等）では
+                # .git/HEAD を直接読んでコミットハッシュを取得する
+                try:
+                    project_root = Path(__file__).resolve().parent.parent.parent
+                    head = (project_root / ".git" / "HEAD").read_text().strip()
+                    if head.startswith("ref: "):
+                        sha = (project_root / ".git" / head[5:]).read_text().strip()
+                    else:
+                        sha = head  # detached HEAD
+                    git_hash = sha[:7]
+                except Exception:
+                    git_hash = "unknown"
 
     interface_version  = get_model_interface_version()
     data_version       = _next_data_version(location, interface_version)

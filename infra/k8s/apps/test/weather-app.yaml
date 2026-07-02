@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/daigo424/weather-forecast-ai
-    targetRevision: main
+    targetRevision: feature/commit-id-into-model
     path: infra/k8s/overlays/test/api
   destination:
     server: https://kubernetes.default.svc
