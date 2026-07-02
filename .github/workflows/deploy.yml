@@ -112,6 +112,7 @@ jobs:
       - name: Build and push ${{ matrix.service }}
         run: |
           docker build -f "infra/docker/${{ matrix.dockerfile }}" \
+            --build-arg GIT_COMMIT=${{ github.sha }} \
             -t "${{ steps.img.outputs.ecr_base }}/${{ matrix.service }}:${{ steps.img.outputs.tag }}" .
           docker push "${{ steps.img.outputs.ecr_base }}/${{ matrix.service }}:${{ steps.img.outputs.tag }}"
 
