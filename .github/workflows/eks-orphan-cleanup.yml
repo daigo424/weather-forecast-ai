@@ -34,11 +34,11 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsWorkloadDeployRole
-          aws-region: us-west-2
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Audit orphaned AWS resources
         run: |
-          REGION="us-west-2"
+          REGION="${{ vars.AWS_REGION }}"
           FOUND=false
           CLUSTER_NAME="${{ github.event.inputs.cluster_name }}"
 
