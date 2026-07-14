@@ -14,3 +14,7 @@ variable "azs" {
 variable "create_nat" {
   type = bool
 }
+
+variable "create_endpoints" {
+  type = bool
+}

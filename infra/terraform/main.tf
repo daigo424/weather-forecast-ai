@@ -9,11 +9,12 @@ module "ml_data" {
 module "network" {
   count = local.is_test ? 1 : 0
 
-  source      = "./modules/network"
-  name_prefix = local.name_prefix
-  vpc_cidr    = var.vpc_cidr
-  azs         = ["ap-northeast-1a", "ap-northeast-1c"]
-  create_nat  = var.compute_enabled
+  source           = "./modules/network"
+  name_prefix      = local.name_prefix
+  vpc_cidr         = var.vpc_cidr
+  azs              = ["ap-northeast-1a", "ap-northeast-1c"]
+  create_nat       = var.compute_enabled
+  create_endpoints = var.compute_enabled
 }
 
 module "ecr" {
@@ -28,7 +29,7 @@ module "ecr" {
 }
 
 module "bastion" {
-  count = local.is_test ? 1 : 0
+  count = local.create_compute ? 1 : 0
 
   source           = "./modules/bastion"
   name_prefix      = local.name_prefix

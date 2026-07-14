@@ -117,18 +117,8 @@ resource "aws_route_table_association" "private" {
 
 data "aws_region" "current" {}
 
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = data.aws_vpc.main.id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private.id]
-
-  tags = {
-    Name = "${var.name_prefix}-s3-endpoint"
-  }
-}
-
 resource "aws_security_group" "ecr_endpoint" {
+  count  = var.create_endpoints ? 1 : 0
   name   = "${var.name_prefix}-ecr-endpoint-sg"
   vpc_id = data.aws_vpc.main.id
 
@@ -144,12 +134,25 @@ resource "aws_security_group" "ecr_endpoint" {
   }
 }
 
+resource "aws_vpc_endpoint" "s3" {
+  count             = var.create_endpoints ? 1 : 0
+  vpc_id            = data.aws_vpc.main.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+
+  tags = {
+    Name = "${var.name_prefix}-s3-endpoint"
+  }
+}
+
 resource "aws_vpc_endpoint" "ecr_api" {
+  count               = var.create_endpoints ? 1 : 0
   vpc_id              = data.aws_vpc.main.id
   service_name        = "com.amazonaws.${data.aws_region.current.name}.ecr.api"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.ecr_endpoint.id]
+  security_group_ids  = [aws_security_group.ecr_endpoint[0].id]
   private_dns_enabled = true
 
   tags = {
@@ -158,11 +161,12 @@ resource "aws_vpc_endpoint" "ecr_api" {
 }
 
 resource "aws_vpc_endpoint" "ecr_dkr" {
+  count               = var.create_endpoints ? 1 : 0
   vpc_id              = data.aws_vpc.main.id
   service_name        = "com.amazonaws.${data.aws_region.current.name}.ecr.dkr"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.ecr_endpoint.id]
+  security_group_ids  = [aws_security_group.ecr_endpoint[0].id]
   private_dns_enabled = true
 
   tags = {
