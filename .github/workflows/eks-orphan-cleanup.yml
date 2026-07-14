@@ -1,0 +1,373 @@
+name: eks-orphan-cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment"
+        required: true
+        type: choice
+        options: [test, prod]
+      cluster_name:
+        description: "EKS cluster name"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve account ID
+        id: account
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            prod) echo "id=${{ vars.PROD_AWS_ACCOUNT_ID }}" >> "$GITHUB_OUTPUT" ;;
+            test) echo "id=${{ vars.TEST_AWS_ACCOUNT_ID }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsWorkloadDeployRole
+          aws-region: us-west-2
+
+      - name: Audit orphaned AWS resources
+        run: |
+          REGION="us-west-2"
+          FOUND=false
+          CLUSTER_NAME="${{ github.event.inputs.cluster_name }}"
+
+          if [ -z "$CLUSTER_NAME" ]; then
+            echo "Error: cluster_name is required"
+            exit 1
+          fi
+
+          echo ""
+          echo "############################################################"
+          echo "  EKS Orphan Audit — env: ${{ github.event.inputs.environment }}, cluster: $CLUSTER_NAME"
+          echo "############################################################"
+          echo ""
+
+          NOT_TF="?!(Tags[?Key=='ManagedBy' && Value=='terraform'])"                          # JMESPath — ec2 / resourcegroupstagging
+          NOT_TF_RES="ResourceTagMappingList[?!(Tags[?Key=='ManagedBy' && Value=='terraform'])].ResourceARN"  # JMESPath — resourcegroupstagging
+          NOT_TF_JQ='[.[] | select(.Key=="ManagedBy" and .Value=="terraform")] | length'  # jq     — classic ELB [4]
+          TF_TAG_VALUE="terraform"                                                          # 文字列 — CW Logs [9]
+
+          K8S_TAG_FILTER="Key=elbv2.k8s.aws/cluster,Values=$CLUSTER_NAME"
+          EKS_CLUSTER_NAME_TAG_FILTER="Key=eks:cluster-name,Values=$CLUSTER_NAME"
+          EKS_EKS_CLUSTER_NAME_TAG_FILTER="Key=eks:eks-cluster-name,Values=$CLUSTER_NAME"
+          KARPENTER_INSTANCE_FILTER="Name=tag:kubernetes.io/cluster/$CLUSTER_NAME,Values=owned"
+          LBC_SG_FILTER="Name=tag:elbv2.k8s.aws/cluster,Values=$CLUSTER_NAME"
+          KARPENTER_SG_FILTER="Name=tag:karpenter.sh/discovery,Values=$CLUSTER_NAME"
+          ENI_TAG_FILTER="Key=eks:eks-cluster-name,Values=$CLUSTER_NAME"
+          CLASSIC_K8S_CHECK=".Key == \"kubernetes.io/cluster/$CLUSTER_NAME\""
+          CW_EKS_PREFIX="/aws/eks/$CLUSTER_NAME"
+          CW_CI_PREFIX="/aws/containerinsights/$CLUSTER_NAME"
+
+          # ----------------------------------------------------------------
+          echo "=== [1] EBS Volumes (EBS CSI) ==="
+          IDS=$(aws ec2 describe-volumes \
+            --region "$REGION" \
+            --filters "Name=tag-key,Values=kubernetes.io/created-for/pvc/name" \
+            --query "Volumes[$NOT_TF].VolumeId" --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$IDS" ]; then
+            FOUND=true
+            echo "$IDS"
+            echo "--- delete commands ---"
+            echo "$IDS" | while read -r id; do
+              echo "aws ec2 delete-volume --volume-id $id --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [2] EC2 Instances (Karpenter nodes) ==="
+          IDS=$(aws ec2 describe-instances \
+            --region "$REGION" \
+            --filters \
+              "$KARPENTER_INSTANCE_FILTER" \
+              "Name=instance-state-name,Values=running,pending,stopping,stopped" \
+            --query "Reservations[*].Instances[] | [$NOT_TF].InstanceId" --output text 2>/dev/null \
+            | tr '\t' ' ' | xargs || true)
+          if [ -n "$IDS" ]; then
+            FOUND=true
+            echo "$IDS" | tr ' ' '\n'
+            echo "--- delete commands ---"
+            echo "aws ec2 terminate-instances --instance-ids $IDS --region $REGION"
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [3] ALB / NLB — Load Balancers (AWS Load Balancer Controller) ==="
+          LB_ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "elasticloadbalancing:loadbalancer" \
+            --tag-filters "$K8S_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$LB_ARNS" ]; then
+            FOUND=true
+            echo "$LB_ARNS"
+            echo "--- delete commands (listeners/rules are auto-deleted with LB) ---"
+            echo "$LB_ARNS" | while read -r arn; do
+              echo "aws elbv2 delete-load-balancer --load-balancer-arn $arn --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          echo "=== [3a] ALB / NLB — Listeners ==="
+          LISTENER_ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "elasticloadbalancing:listener" \
+            --tag-filters "$K8S_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$LISTENER_ARNS" ]; then
+            FOUND=true
+            echo "$LISTENER_ARNS"
+            echo "(deleted automatically when parent LB is deleted)"
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          echo "=== [3b] ALB / NLB — Listener Rules ==="
+          RULE_ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "elasticloadbalancing:listener-rule" \
+            --tag-filters "$K8S_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$RULE_ARNS" ]; then
+            FOUND=true
+            echo "$RULE_ARNS"
+            echo "(deleted automatically when parent LB is deleted)"
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [4] Classic ELBs (type:LoadBalancer v1) ==="
+          CLASSIC_NAMES=$(aws elb describe-load-balancers \
+            --region "$REGION" \
+            --query "LoadBalancerDescriptions[*].LoadBalancerName" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          CLASSIC_ORPHANS=""
+          for NAME in $CLASSIC_NAMES; do
+            TAGS=$(aws elb describe-tags --region "$REGION" --load-balancer-names "$NAME" \
+              --query "TagDescriptions[0].Tags" --output json 2>/dev/null || echo "[]")
+            IS_K8S=$(echo "$TAGS" | jq "[.[] | select($CLASSIC_K8S_CHECK)] | length" 2>/dev/null || echo "0")
+            IS_TF=$(echo "$TAGS" | jq "$NOT_TF_JQ" 2>/dev/null || echo "0")
+            if [ "$IS_K8S" -gt 0 ] && [ "$IS_TF" = "0" ]; then
+              CLASSIC_ORPHANS="${CLASSIC_ORPHANS} ${NAME}"
+            fi
+          done
+          if [ -n "$CLASSIC_ORPHANS" ]; then
+            FOUND=true
+            echo "$CLASSIC_ORPHANS" | tr ' ' '\n' | grep -v '^$'
+            echo "--- delete commands ---"
+            echo "$CLASSIC_ORPHANS" | tr ' ' '\n' | grep -v '^$' | while read -r name; do
+              echo "aws elb delete-load-balancer --load-balancer-name $name --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [5] Target Groups (AWS LBC) ==="
+          TG_ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "elasticloadbalancing:targetgroup" \
+            --tag-filters "$K8S_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$TG_ARNS" ]; then
+            FOUND=true
+            echo "$TG_ARNS"
+            echo "--- delete commands ---"
+            echo "$TG_ARNS" | while read -r arn; do
+              echo "aws elbv2 delete-target-group --target-group-arn $arn --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [6] Security Groups — AWS LBC ==="
+          IDS=$(aws ec2 describe-security-groups \
+            --region "$REGION" \
+            --filters "$LBC_SG_FILTER" \
+            --query "SecurityGroups[$NOT_TF].GroupId" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$IDS" ]; then
+            FOUND=true
+            echo "$IDS"
+            echo "--- delete commands ---"
+            echo "$IDS" | while read -r id; do
+              echo "aws ec2 delete-security-group --group-id $id --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [7] Security Groups — Karpenter ==="
+          IDS=$(aws ec2 describe-security-groups \
+            --region "$REGION" \
+            --filters "$KARPENTER_SG_FILTER" \
+            --query "SecurityGroups[$NOT_TF].GroupId" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$IDS" ]; then
+            FOUND=true
+            echo "$IDS"
+            echo "--- delete commands ---"
+            echo "$IDS" | while read -r id; do
+              echo "aws ec2 delete-security-group --group-id $id --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [8] Network Interfaces ==="
+          ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "ec2:network-interface" \
+            --tag-filters "$ENI_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$ARNS" ]; then
+            FOUND=true
+            echo "$ARNS"
+            echo "--- delete commands ---"
+            echo "$ARNS" | awk -F'/' '{print $NF}' | while read -r id; do
+              echo "aws ec2 delete-network-interface --network-interface-id $id --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [9] CloudWatch Log Groups ==="
+          ALL_LGS=$(
+            aws logs describe-log-groups --region "$REGION" \
+              --log-group-name-prefix "$CW_EKS_PREFIX" \
+              --query "logGroups[*].logGroupName" --output text 2>/dev/null | tr '\t' '\n'
+            aws logs describe-log-groups --region "$REGION" \
+              --log-group-name-prefix "$CW_CI_PREFIX" \
+              --query "logGroups[*].logGroupName" --output text 2>/dev/null | tr '\t' '\n'
+          )
+          ALL_LGS=$(echo "$ALL_LGS" | grep -v '^$' || true)
+          LGS=""
+          for LG in $ALL_LGS; do
+            MANAGED_BY=$(aws logs list-tags-log-group --region "$REGION" --log-group-name "$LG" \
+              --query "tags.ManagedBy" --output text 2>/dev/null || echo "")
+            if [ "$MANAGED_BY" != "$TF_TAG_VALUE" ]; then
+              LGS="${LGS}${LG}"$'\n'
+            fi
+          done
+          LGS=$(echo "$LGS" | grep -v '^$' || true)
+          if [ -n "$LGS" ]; then
+            FOUND=true
+            echo "$LGS"
+            echo "--- delete commands ---"
+            echo "$LGS" | while read -r lg; do
+              echo "aws logs delete-log-group --log-group-name \"$lg\" --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [10] EC2 Instances (resourcegroupstaggingapi) ==="
+          ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "ec2:instance" \
+            --tag-filters "$EKS_CLUSTER_NAME_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$ARNS" ]; then
+            FOUND=true
+            echo "$ARNS"
+            echo "--- delete commands ---"
+            IDS=$(echo "$ARNS" | awk -F'/' '{print $NF}' | tr '\n' ' ')
+            echo "aws ec2 terminate-instances --instance-ids $IDS --region $REGION"
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [11] EC2 Fleets ==="
+          ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "ec2:fleet" \
+            --tag-filters "$EKS_EKS_CLUSTER_NAME_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$ARNS" ]; then
+            FOUND=true
+            echo "$ARNS"
+            echo "--- delete commands ---"
+            echo "$ARNS" | awk -F'/' '{print $NF}' | while read -r id; do
+              echo "aws ec2 delete-fleets --fleet-ids $id --terminate-instances --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "=== [12] EC2 Launch Templates ==="
+          ARNS=$(aws resourcegroupstaggingapi get-resources \
+            --region "$REGION" \
+            --resource-type-filters "ec2:launch-template" \
+            --tag-filters "$EKS_EKS_CLUSTER_NAME_TAG_FILTER" \
+            --no-paginate \
+            --query "$NOT_TF_RES" --output text 2>/dev/null \
+            | tr '\t' '\n' | grep -v '^$' || true)
+          if [ -n "$ARNS" ]; then
+            FOUND=true
+            echo "$ARNS"
+            echo "--- delete commands ---"
+            echo "$ARNS" | awk -F'/' '{print $NF}' | while read -r id; do
+              echo "aws ec2 delete-launch-template --launch-template-id $id --region $REGION"
+            done
+          else
+            echo "(none)"
+          fi
+          echo ""
+
+          # ----------------------------------------------------------------
+          echo "############################################################"
+          if [ "$FOUND" = "true" ]; then
+            echo "  RESULT: Orphaned resources found. Run the delete commands above."
+          else
+            echo "  RESULT: No orphaned resources found. All clear."
+          fi
+          echo "############################################################"
