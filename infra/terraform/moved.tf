@@ -65,3 +65,23 @@ moved {
   from = module.iam_eks[0].aws_iam_role_policy.argo_workflows
   to   = module.iam_eks[0].aws_iam_role_policy.ml_workflow
 }
+
+moved {
+  from = module.network[0].aws_vpc_endpoint.s3
+  to   = module.network[0].aws_vpc_endpoint.s3[0]
+}
+
+moved {
+  from = module.network[0].aws_security_group.ecr_endpoint
+  to   = module.network[0].aws_security_group.ecr_endpoint[0]
+}
+
+moved {
+  from = module.network[0].aws_vpc_endpoint.ecr_api
+  to   = module.network[0].aws_vpc_endpoint.ecr_api[0]
+}
+
+moved {
+  from = module.network[0].aws_vpc_endpoint.ecr_dkr
+  to   = module.network[0].aws_vpc_endpoint.ecr_dkr[0]
+}

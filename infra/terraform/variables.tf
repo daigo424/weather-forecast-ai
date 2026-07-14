@@ -13,7 +13,7 @@ variable "environment" {
 variable "compute_enabled" {
   type        = bool
   default     = false
-  description = "EKS・NAT・IRSA を作成するか（false で削除。RDS・S3 は保持）"
+  description = "EKS・NAT・VPC Endpoint・Bastion・IRSA を作成するか（false で削除。RDS・S3・VPC・Subnet は保持）"
 }
 
 variable "eks_version" {
