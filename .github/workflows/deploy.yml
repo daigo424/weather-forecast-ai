@@ -98,7 +98,7 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsWorkloadDeployRole
-          aws-region: ap-northeast-1
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -106,7 +106,7 @@ jobs:
       - name: Set image variables
         id: img
         run: |
-          echo "ecr_base=${{ steps.account.outputs.id }}.dkr.ecr.ap-northeast-1.amazonaws.com/weather-forecast-ai-${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+          echo "ecr_base=${{ steps.account.outputs.id }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/weather-forecast-ai-${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
           echo "tag=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Build and push ${{ matrix.service }}
