@@ -2,11 +2,6 @@
 # terraform apply で state 移行が完了したら、このファイルは削除してよい。
 
 moved {
-  from = aws_kms_key.ml_data_key
-  to   = module.ml_data.aws_kms_key.ml_data_key
-}
-
-moved {
   from = aws_s3_bucket.ml_data
   to   = module.ml_data.aws_s3_bucket.ml_data
 }

@@ -1,9 +1,3 @@
-resource "aws_kms_key" "ml_data_key" {
-  description             = "${var.name_prefix}-ml-data-kms-key"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
-}
-
 resource "aws_s3_bucket" "ml_data" {
   bucket        = "${var.name_prefix}-ml-data"
   force_destroy = true
