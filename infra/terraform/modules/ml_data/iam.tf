@@ -44,15 +44,6 @@ data "aws_iam_policy_document" "github_actions_role_policy" {
       "${aws_s3_bucket.ml_data.arn}/*",
     ]
   }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "kms:Decrypt",
-      "kms:GenerateDataKey",
-    ]
-    resources = [aws_kms_key.ml_data_key.arn]
-  }
 }
 
 resource "aws_iam_role_policy" "github_actions_role_policy" {

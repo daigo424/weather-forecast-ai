@@ -71,8 +71,7 @@ resource "aws_athena_workgroup" "logs" {
       output_location = "s3://${aws_s3_bucket.ml_data.bucket}/athena-results/"
 
       encryption_configuration {
-        encryption_option = "SSE_KMS"
-        kms_key_arn       = aws_kms_key.ml_data_key.arn
+        encryption_option = "SSE_S3"
       }
     }
   }

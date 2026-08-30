@@ -13,7 +13,3 @@ variable "oidc_provider_url" {
 variable "ml_data_bucket_arn" {
   type = string
 }
-
-variable "kms_key_arn" {
-  type = string
-}

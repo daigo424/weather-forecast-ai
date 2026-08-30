@@ -65,5 +65,4 @@ module "iam_eks" {
   oidc_provider_arn  = module.eks[0].oidc_provider_arn
   oidc_provider_url  = module.eks[0].oidc_provider_url
   ml_data_bucket_arn = module.ml_data.bucket_arn
-  kms_key_arn        = module.ml_data.kms_key_arn
 }
