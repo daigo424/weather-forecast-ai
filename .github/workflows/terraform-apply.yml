@@ -9,7 +9,7 @@ on:
         type: choice
         options: [test, prod]
       compute_enabled:
-        description: "EKS・NAT・IRSA を作成するか (false で削除。RDS・S3 は保持)"
+        description: "EKS・NAT・IRSA を作成するか (false で削除。RDS・S3 は保持)。trueにする際、独自dockerイメージが無ければdeploy.ymlを自動起動するが完了を待たないため、数分間ImagePullBackOffになることがある（ArgoCDが自己修復）"
         required: true
         type: boolean
         default: false
@@ -48,6 +48,15 @@ jobs:
             test) echo "id=${{ vars.TEST_AWS_ACCOUNT_ID }}" >> "$GITHUB_OUTPUT" ;;
           esac
 
+      - name: Resolve retain_on_idle
+        id: retain
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            prod) VALUE="${{ vars.RETAIN_ON_IDLE_PROD }}" ;;
+            test) VALUE="${{ vars.RETAIN_ON_IDLE_TEST }}" ;;
+          esac
+          echo "value=${VALUE:-true}" >> "$GITHUB_OUTPUT"
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ steps.account.outputs.id }}:role/GitHubActionsWorkloadDeployRole
@@ -84,6 +93,7 @@ jobs:
         env:
           TF_VAR_environment:             ${{ github.event.inputs.environment }}
           TF_VAR_compute_enabled:         ${{ github.event.inputs.compute_enabled }}
+          TF_VAR_retain_on_idle:          ${{ steps.retain.outputs.value }}
           TF_VAR_docker_hub_username:     ${{ secrets.DOCKER_HUB_USERNAME }}
           TF_VAR_docker_hub_access_token: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
         run: terraform apply -input=false -auto-approve
@@ -94,6 +104,53 @@ jobs:
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+
+      - name: Trigger build for missing docker images
+        if: github.event.inputs.compute_enabled == 'true'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          URLS_JSON=$(terraform output -json ecr_urls)
+
+          if [ "$URLS_JSON" = "null" ]; then
+            echo "No ECR module for this environment, skipping image check"
+            exit 0
+          fi
+
+          MISSING=()
+          for svc in api frontend ml-workflow mlflow; do
+            REPO_URL=$(echo "$URLS_JSON" | jq -r --arg svc "$svc" '.[$svc] // empty')
+            if [ -z "$REPO_URL" ]; then
+              echo "No repository output for $svc, skipping"
+              continue
+            fi
+            REPO_NAME=$(echo "$REPO_URL" | cut -d'/' -f2-)
+            COUNT=$(aws ecr list-images --repository-name "$REPO_NAME" --region "${{ vars.AWS_REGION }}" --query 'length(imageIds)' --output text 2>/dev/null || echo "0")
+            if [ "$COUNT" = "0" ]; then
+              MISSING+=("$svc")
+            fi
+          done
+
+          if [ "${#MISSING[@]}" -eq 0 ]; then
+            echo "All service images already exist, skipping rebuild"
+            exit 0
+          fi
+
+          echo "Missing images for: ${MISSING[*]} — triggering deploy.yml"
+
+          ARGS=(-f "environment=$ENV")
+          for svc in api frontend ml-workflow mlflow; do
+            key=$(echo "$svc" | tr '-' '_')
+            value=false
+            for m in "${MISSING[@]}"; do
+              [ "$m" = "$svc" ] && value=true
+            done
+            ARGS+=(-f "${key}=${value}")
+          done
+
+          gh workflow run deploy.yml --ref "${{ github.ref_name }}" "${ARGS[@]}"
 
       - name: Record compute state
         env:

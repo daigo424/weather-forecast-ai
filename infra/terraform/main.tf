@@ -18,7 +18,7 @@ module "network" {
 }
 
 module "ecr" {
-  count = local.is_test ? 1 : 0
+  count = local.is_test && (var.compute_enabled || var.retain_on_idle) ? 1 : 0
 
   source                  = "./modules/ecr"
   name_prefix             = local.name_prefix
